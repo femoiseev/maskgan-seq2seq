@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+mkdir scripts
+mkdir models
+mkdir notebooks
+mkdir data
+mkdir data/raw
+mkdir data/interim
+mkdir data/processed
+mkdir checkpoints
