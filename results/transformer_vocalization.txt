@@ -1,0 +1,2 @@
+Namespace(ignore_case=False, order=4, ref='/tmp/gen.out.ref', sacrebleu=False, sys='/tmp/gen.out.sys')
+BLEU4 = 89.46, 97.4/92.7/88.8/84.5 (BP=0.986, ratio=0.986, syslen=8792, reflen=8918)

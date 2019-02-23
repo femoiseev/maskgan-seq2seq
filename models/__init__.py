@@ -28,11 +28,12 @@ def tr_voc_architecture(args):
     args.decoder_output_dim = getattr(args, 'decoder_output_dim', args.decoder_embed_dim)
     args.decoder_input_dim = getattr(args, 'decoder_input_dim', args.decoder_embed_dim)
 
+
 @register_model_architecture('transformer', 'transformer_he-en')
 def tr_he_en_architecture(args):
     args.encoder_embed_path = getattr(args, 'encoder_embed_path', None)
-    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 32)
-    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 64)
+    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 128)
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 256)
     args.encoder_layers = getattr(args, 'encoder_layers', 6)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 8)
     args.encoder_normalize_before = getattr(args, 'encoder_normalize_before', False)
