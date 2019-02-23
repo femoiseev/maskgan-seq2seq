@@ -7,3 +7,4 @@ mkdir data/raw
 mkdir data/interim
 mkdir data/processed
 mkdir checkpoints
+mkdir results
