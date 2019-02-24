@@ -1,2 +1,8 @@
-Namespace(ignore_case=False, order=4, ref='/tmp/gen.out.ref', sacrebleu=False, sys='/tmp/gen.out.sys')
-BLEU4 = 57.19, 78.2/61.5/54.1/49.1 (BP=0.957, ratio=0.958, syslen=591933, reflen=618003)
+Namespace(beam=5, cpu=False, data=['../../data/processed/he-en'], diverse_beam_groups=-1, diverse_beam_strength=0.5, fp16=False, fp16_init_scale=128, fp16_scale_tolerance=0.0, fp16_scale_window=None, gen_subset='test', lazy_load=False, left_pad_source='True', left_pad_target='False', lenpen=1, log_format='tqdm', log_interval=1000, match_source_len=False, max_len_a=0, max_len_b=200, max_sentences=512, max_source_positions=1024, max_target_positions=1024, max_tokens=None, memory_efficient_fp16=False, min_len=1, model_overrides='{}', nbest=1, no_beamable_mm=False, no_early_stop=False, no_progress_bar=False, no_repeat_ngram_size=0, num_shards=1, num_workers=0, path='../../checkpoints/transformer_he-en/checkpoint_best.pt', prefix_size=0, print_alignment=False, quiet=True, raw_text=True, remove_bpe='@@ ', replace_unk=None, sacrebleu=False, sampling=False, sampling_temperature=1, sampling_topk=-1, score_reference=False, seed=1, shard_id=0, skip_invalid_size_inputs_valid_test=False, source_lang=None, target_lang=None, task='translation', unkpen=0, unnormalized=False, upsample_primary=1, user_dir='../../models')
+| [he] dictionary: 208 types
+| [en] dictionary: 304 types
+| ../../data/processed/he-en test 42375 examples
+| ['../../data/processed/he-en'] test 42375 examples
+| loading model(s) from ../../checkpoints/transformer_he-en/checkpoint_best.pt
+| Translated 42375 sentences (631173 tokens) in 156.7s (270.49 sentences/s, 4028.94 tokens/s)
+| Generate test with beam=5: BLEU4 = 63.75, 81.9/68.4/62.2/57.8 (BP=0.952, ratio=0.953, syslen=588798, reflen=618003)
