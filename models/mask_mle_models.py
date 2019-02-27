@@ -3,10 +3,7 @@ from copy import deepcopy
 import torch
 import fairseq
 from fairseq.models import FairseqEncoder
-from fairseq.models.transformer import (TransformerEncoder,
-                                        TransformerDecoder,
-                                        TransformerModel,
-                                        Embedding)
+from fairseq.models.transformer import TransformerEncoder
 import torch.nn as nn
 
 
@@ -25,6 +22,8 @@ class MLETransformerEncoder(FairseqEncoder):
     def __init__(self, args, src_dictionary, dst_dictionary, 
                  src_embed_tokens, dst_embed_tokens, left_pad=True):
         super().__init__(None)
+        
+        self.SPLIT_SYMBOL = "<SPLIT>"
         self.src_dictionary = deepcopy(src_dictionary)
         self.dst_dictionary = deepcopy(dst_dictionary)
         
@@ -37,7 +36,7 @@ class MLETransformerEncoder(FairseqEncoder):
                                                  dst_embed_tokens, left_pad=left_pad)
         
 
-    def forward(self, src_tokens, dst_tokens, src_lengths, dst_lengths):
+    def forward(self, src_tokens, src_lengths):
         """
         Args:
             src_tokens (LongTensor): tokens in the source language of shape
@@ -52,6 +51,13 @@ class MLETransformerEncoder(FairseqEncoder):
                   padding elements of shape `(batch, src_len)`
         """
         # embed tokens and positions
+           
+        src_mask = src_tokens == self.src_dictionary.index(sym=self.SPLIT_SYMBOL)
+        print(src_mask[0])
+        print(src_mask[1])
+        print(src_mask[2])
+        print(src_mask[3])
+        
         src_dict = self.encoder(src_tokens, src_lengths)
         
         mask_prob = np.random.uniform()

@@ -2,6 +2,11 @@ import numpy
 import torch
 from fairseq.models import register_model_architecture
 from fairseq.models import FairseqModel, register_model, FairseqEncoder
+from fairseq.models.transformer import (TransformerEncoder,
+                                        TransformerDecoder,
+                                        TransformerModel,
+                                        Embedding)
+
 from .mask_mle_models import MLETransformerEncoder
     
 
