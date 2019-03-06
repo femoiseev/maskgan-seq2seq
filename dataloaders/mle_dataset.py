@@ -7,6 +7,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.cnts = 0
         
     
     def collater(self, samples):
@@ -35,9 +36,6 @@ class MLELanguagePairDataset(LanguagePairDataset):
         """
         if len(samples) == 0:
             return {}
-        
-        print(self.left_pad_source)
-        print(self.left_pad_target)
 
         def merge(key, pad, eos, left_pad, move_eos_to_beginning=False):
             return data_utils.collate_tokens(
@@ -94,13 +92,13 @@ class MLELanguagePairDataset(LanguagePairDataset):
 #                     if mask_val: 
 #                         target[i, j] = self.tgt_dict.index("<MASK>")
 
-        print("*" * 40)
-        print("from dataset")
+#         print("*" * 40)
+#         print("from dataset")
             
-        print(src_lengths.max())
-        print(tgt_lengths.max())
-        print("dataset end")
-        print("*" * 40)
+#         print(src_lengths.max())
+#         print(tgt_lengths.max())
+#         print("dataset end")
+#         print("*" * 40)
         batch = {
             'id': id,
             'nsentences': len(samples),
@@ -113,6 +111,14 @@ class MLELanguagePairDataset(LanguagePairDataset):
             },
             'target': ok_target,
         }
+        self.cnts += 1
+        print('Batch {} created, src_tokens: '.format(self.cnts))
+        print('number of samples: {}'.format(len(samples)))
+        print('samples[0]')
+        print(samples[0]['source'])
+        print(batch['net_input']['src_tokens'])
+        print(batch['net_input']['src_tokens'].size())
+        print('*' * 40)
         if prev_output_tokens is not None:
             batch['net_input']['prev_output_tokens'] = prev_output_tokens
         return batch
