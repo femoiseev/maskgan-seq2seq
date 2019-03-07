@@ -61,29 +61,28 @@ class MLETransformerEncoder(FairseqEncoder):
 #         for i in range(128):
 #             print(self.src_dictionary.index(src_tokes[0][i], endline=" "))
 
-        print("*" * 40)
-        print("src")
-        print(self.src_dictionary.string(src_tokens))
-        print("tgt")
-        print(self.dst_dictionary.string(masked_tgt))
-        print("*" * 40)
+#         print("*" * 40)
+#         print("src")
+#         print(self.src_dictionary.string(src_tokens))
+#         print("tgt")
+#         print(self.dst_dictionary.string(masked_tgt))
+#         print("*" * 40)
         
         src_dict = self.encoder(src_tokens, src_lengths)
 #         print("usual encoder ok")
 
-        print("*" * 40)
-        print(torch.max(src_lengths))
-        print(tgt_lengths.size())
-        print(torch.max(tgt_lengths))
-        print("*" * 40)
+#         print("*" * 40)
+#         print(torch.max(src_lengths))
+#         print(tgt_lengths.size())
+#         print(torch.max(tgt_lengths))
+#         print("*" * 40)
         dst_dict = self.masked_encoder(masked_tgt, tgt_lengths)
-        print("masked ok")
-        print("masked tgt")
-        print(masked_tgt.size())
-        print("src ")
-        print(src_tokens.size())
-        print(torch.cat([src_dict['encoder_out'], dst_dict['encoder_out']], dim=-1).size())
-        
+#         print("masked ok")
+#         print("masked tgt")
+#         print(masked_tgt.size())
+#         print("src ")
+#         print(src_tokens.size())
+#         print(torch.cat([src_dict['encoder_out'], dst_dict['encoder_out']], dim=-1).size())
         
         res = {
             'encoder_out': torch.cat([src_dict['encoder_out'], dst_dict['encoder_out']], dim=-1),

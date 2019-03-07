@@ -221,8 +221,8 @@ from fairseq.tasks.translation import TranslationTask
 from fairseq.tasks import register_task
 from dataloaders.mle_dataset import MLELanguagePairDataset
 
-@register_task("mask_mle_translation")
-class MaskMLETranslationTask(TranslationTask):
+@register_task("mask_mle_vocalization")
+class MaskMLEVocalizationTask(TranslationTask):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -287,7 +287,6 @@ class MaskMLETranslationTask(TranslationTask):
         tgt_datasets = []
 
         data_paths = self.args.data
-
         for dk, data_path in enumerate(data_paths):
             for k in itertools.count():
                 split_k = split + (str(k) if k > 0 else '')

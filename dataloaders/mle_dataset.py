@@ -2,13 +2,30 @@ import torch
 from fairseq.data.language_pair_dataset import LanguagePairDataset
 from fairseq.data import data_utils
 
+def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False, max_len=128):
+    """Convert a list of 1d tensors into a padded 2d tensor."""
+    res = values[0].new(len(values), max_len).fill_(pad_idx)
 
+    def copy_tensor(src, dst):
+        assert dst.numel() == src.numel()
+        if move_eos_to_beginning:
+            assert src[-1] == eos_idx
+            dst[0] = eos_idx
+            dst[1:] = src[:-1]
+        else:
+            dst.copy_(src)
+
+    for i, v in enumerate(values):
+        copy_tensor(v, res[i][max_len - len(v):] if left_pad else res[i][:len(v)])
+    return res
+    
+    
 class MLELanguagePairDataset(LanguagePairDataset):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cnts = 0
-        
+           
     
     def collater(self, samples):
         """Merge a list of samples to form a mini-batch.
@@ -38,7 +55,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
             return {}
 
         def merge(key, pad, eos, left_pad, move_eos_to_beginning=False):
-            return data_utils.collate_tokens(
+            return collate_tokens(
                 [s[key] for s in samples],
                 pad, eos, left_pad, move_eos_to_beginning,
             )
@@ -114,9 +131,11 @@ class MLELanguagePairDataset(LanguagePairDataset):
         self.cnts += 1
         print('Batch {} created, src_tokens: '.format(self.cnts))
         print('number of samples: {}'.format(len(samples)))
-        print('samples[0]')
+        print('samples[0] source')
         print(samples[0]['source'])
+        print('net_input src_tokens')
         print(batch['net_input']['src_tokens'])
+        print('net input src_tokens.size')
         print(batch['net_input']['src_tokens'].size())
         print('*' * 40)
         if prev_output_tokens is not None:
