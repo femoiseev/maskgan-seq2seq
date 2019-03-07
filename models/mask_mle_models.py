@@ -22,7 +22,6 @@ class MLETransformerEncoder(FairseqEncoder):
     def __init__(self, args, src_dictionary, dst_dictionary, 
                  src_embed_tokens, dst_embed_tokens, left_pad=True):
         
-        print("created MLE Encoder")
         super().__init__(None)
             
         self.src_dictionary = src_dictionary

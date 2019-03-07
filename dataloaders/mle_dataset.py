@@ -99,15 +99,17 @@ class MLELanguagePairDataset(LanguagePairDataset):
             ntokens = sum(len(s['source']) for s in samples)
 
         p = 0.1
-#         mask = torch.distributions.Bernoulli(torch.Tensor([p]))
+        mask = torch.distributions.Bernoulli(torch.Tensor([p]))
         ok_target = torch.LongTensor(target)
 
-#         if samples[0].get('target', None) is not None:
-#             for i in range(len(target)):
-#                 for j in range(len(target[i])):
-#                     mask_val = mask.sample()
-#                     if mask_val: 
-#                         target[i, j] = self.tgt_dict.index("<MASK>")
+        if samples[0].get('target', None) is not None:
+            for i in range(len(target)):
+                for j in range(len(target[i])):
+                    if target[i, j] != self.tgt_dict.pad():
+                        mask_val = mask.sample()
+                        if mask_val: 
+                            continue
+                            target[i, j] = self.tgt_dict.index("<MASK>")
 
 #         print("*" * 40)
 #         print("from dataset")
@@ -129,15 +131,15 @@ class MLELanguagePairDataset(LanguagePairDataset):
             'target': ok_target,
         }
         self.cnts += 1
-        print('Batch {} created, src_tokens: '.format(self.cnts))
-        print('number of samples: {}'.format(len(samples)))
-        print('samples[0] source')
-        print(samples[0]['source'])
-        print('net_input src_tokens')
-        print(batch['net_input']['src_tokens'])
-        print('net input src_tokens.size')
-        print(batch['net_input']['src_tokens'].size())
-        print('*' * 40)
+#         print('Batch {} created, src_tokens: '.format(self.cnts))
+#         print('number of samples: {}'.format(len(samples)))
+#         print('samples[0] source')
+#         print(samples[0]['source'])
+#         print('net_input src_tokens')
+#         print(batch['net_input']['src_tokens'])
+#         print('net input src_tokens.size')
+#         print(batch['net_input']['src_tokens'].size())
+#         print('*' * 40)
         if prev_output_tokens is not None:
             batch['net_input']['prev_output_tokens'] = prev_output_tokens
         return batch
