@@ -107,8 +107,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
                 for j in range(len(target[i])):
                     if target[i, j] != self.tgt_dict.pad():
                         mask_val = mask.sample()
-                        if mask_val: 
-                            continue
+                        if mask_val:
                             target[i, j] = self.tgt_dict.index("<MASK>")
 
 #         print("*" * 40)
