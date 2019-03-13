@@ -1,19 +1,9 @@
-import os
-import numpy
-import torch
-import itertools
-from fairseq.data import (IndexedCachedDataset,
-    IndexedDataset,
-    IndexedRawTextDataset,
-    LanguagePairDataset,)
-from fairseq.models import register_model_architecture
-from fairseq.models import FairseqModel, register_model, FairseqEncoder
-from fairseq.models.transformer import (TransformerEncoder,
-                                        TransformerDecoder,
-                                        TransformerModel,
-                                        Embedding)
+from fairseq import utils
+from fairseq.models import FairseqModel, register_model
+from fairseq.models.transformer import Embedding
 
-from .mask_mle_models import MLETransformerEncoder
+from .mask_mle_models import MLETransformerEncoder, MLETransformerDecoder
+
 
 @register_model('mle_transformer')
 class MLETransformer(FairseqModel):
@@ -117,7 +107,7 @@ class MLETransformer(FairseqModel):
                                         src_dict, tgt_dict, 
                                         src_embed_tokens, tgt_embed_tokens)
         
-        decoder = TransformerDecoder(args, tgt_dict, decoder_embed_tokens)
+        decoder = MLETransformerDecoder(args, tgt_dict, decoder_embed_tokens)
         
         return MLETransformer(encoder, decoder)
     

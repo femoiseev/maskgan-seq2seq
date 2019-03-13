@@ -2,6 +2,7 @@ import torch
 from fairseq.data.language_pair_dataset import LanguagePairDataset
 from fairseq.data import data_utils
 
+
 def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False, max_len=128):
     """Convert a list of 1d tensors into a padded 2d tensor."""
     res = values[0].new(len(values), max_len).fill_(pad_idx)
@@ -25,8 +26,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cnts = 0
-           
-    
+
     def collater(self, samples):
         """Merge a list of samples to form a mini-batch.
         Args:
@@ -59,7 +59,6 @@ class MLELanguagePairDataset(LanguagePairDataset):
                 [s[key] for s in samples],
                 pad, eos, left_pad, move_eos_to_beginning,
             )
-       
 
         id = torch.LongTensor([s['id'] for s in samples])
         src_tokens = merge('source', self.src_dict.pad(),
@@ -82,7 +81,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
             
             tgt_lengths = torch.LongTensor([s['target'].numel() for s in samples])
             target = target.index_select(0, sort_order)
-            tgt_length = tgt_lengths.index_select(0, sort_order)
+            tgt_lengths = tgt_lengths.index_select(0, sort_order)
             ntokens = sum(len(s['target']) for s in samples)
 
             if self.input_feeding:
