@@ -1,23 +1,6 @@
 import torch
 from fairseq.data.language_pair_dataset import LanguagePairDataset
-
-
-def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False, max_len=128):
-    """Convert a list of 1d tensors into a padded 2d tensor."""
-    res = values[0].new(len(values), max_len).fill_(pad_idx)
-
-    def copy_tensor(src, dst):
-        assert dst.numel() == src.numel()
-        if move_eos_to_beginning:
-            assert src[-1] == eos_idx
-            dst[0] = eos_idx
-            dst[1:] = src[:-1]
-        else:
-            dst.copy_(src)
-
-    for i, v in enumerate(values):
-        copy_tensor(v, res[i][max_len - len(v):] if left_pad else res[i][:len(v)])
-    return res
+from fairseq.data import data_utils
     
     
 class MLELanguagePairDataset(LanguagePairDataset):
@@ -54,7 +37,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
             return {}
 
         def merge(key, pad, eos, left_pad, move_eos_to_beginning=False):
-            return collate_tokens(
+            return data_utils.collate_tokens(
                 [s[key] for s in samples],
                 pad, eos, left_pad, move_eos_to_beginning,
             )
@@ -72,14 +55,20 @@ class MLELanguagePairDataset(LanguagePairDataset):
 
         prev_output_tokens = None
         target = None
+        tgt_lengths = None
+        ok_target = None
         if samples[0].get('target', None) is not None:
             
             target = merge('target', self.tgt_dict.pad(),
                            self.tgt_dict.eos(),
-                           left_pad=self.left_pad_target)
-            
+                           left_pad=self.left_pad_source)
+            ok_target = merge('target', self.tgt_dict.pad(),
+                              self.tgt_dict.eos(),
+                              left_pad=self.left_pad_target)
+
             tgt_lengths = torch.LongTensor([s['target'].numel() for s in samples])
             target = target.index_select(0, sort_order)
+            ok_target = ok_target.index_select(0, sort_order)
             tgt_lengths = tgt_lengths.index_select(0, sort_order)
             ntokens = sum(len(s['target']) for s in samples)
 
@@ -98,7 +87,6 @@ class MLELanguagePairDataset(LanguagePairDataset):
 
         p = 0.1
         mask = torch.distributions.Bernoulli(torch.Tensor([p]))
-        ok_target = torch.LongTensor(target)
 
         if samples[0].get('target', None) is not None:
             for i in range(len(target)):
