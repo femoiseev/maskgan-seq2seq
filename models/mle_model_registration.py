@@ -100,9 +100,7 @@ class MLETransformer(FairseqModel):
         decoder_embed_tokens = build_embedding(
             tgt_dict, args.decoder_embed_dim, args.decoder_embed_path
         )
-        
-        assert 2 * args.encoder_embed_dim == args.decoder_embed_dim
-        
+
         encoder = MLETransformerEncoder(args, 
                                         src_dict, tgt_dict, 
                                         src_embed_tokens, tgt_embed_tokens)

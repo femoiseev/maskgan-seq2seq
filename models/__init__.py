@@ -1,12 +1,9 @@
-import os
-import numpy
-import torch
-import itertools
 from fairseq.models import register_model_architecture
 
 from .mle_model_registration import MLETransformer
 from tasks.mask_mle_task import *
-        
+
+
 @register_model_architecture('mle_transformer', 'mle_transformer_vocalization')
 def tr_voc_architecture(args):
     args.encoder_embed_path = getattr(args, 'encoder_embed_path', None)
@@ -17,7 +14,7 @@ def tr_voc_architecture(args):
     args.encoder_normalize_before = getattr(args, 'encoder_normalize_before', False)
     args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', False)
     args.decoder_embed_path = getattr(args, 'decoder_embed_path', None)
-    args.decoder_embed_dim = getattr(args, 'decoder_embed_dim', 2 * args.encoder_embed_dim)
+    args.decoder_embed_dim = getattr(args, 'decoder_embed_dim', args.encoder_embed_dim)
     args.decoder_ffn_embed_dim = getattr(args, 'decoder_ffn_embed_dim', args.encoder_ffn_embed_dim)
     args.decoder_layers = getattr(args, 'decoder_layers', 6)
     args.decoder_attention_heads = getattr(args, 'decoder_attention_heads', 4)

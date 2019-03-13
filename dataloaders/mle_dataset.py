@@ -1,6 +1,5 @@
 import torch
 from fairseq.data.language_pair_dataset import LanguagePairDataset
-from fairseq.data import data_utils
 
 
 def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False, max_len=128):
@@ -109,13 +108,6 @@ class MLELanguagePairDataset(LanguagePairDataset):
                         if mask_val:
                             target[i, j] = self.tgt_dict.index("<MASK>")
 
-#         print("*" * 40)
-#         print("from dataset")
-            
-#         print(src_lengths.max())
-#         print(tgt_lengths.max())
-#         print("dataset end")
-#         print("*" * 40)
         batch = {
             'id': id,
             'nsentences': len(samples),
@@ -129,15 +121,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
             'target': ok_target,
         }
         self.cnts += 1
-#         print('Batch {} created, src_tokens: '.format(self.cnts))
-#         print('number of samples: {}'.format(len(samples)))
-#         print('samples[0] source')
-#         print(samples[0]['source'])
-#         print('net_input src_tokens')
-#         print(batch['net_input']['src_tokens'])
-#         print('net input src_tokens.size')
-#         print(batch['net_input']['src_tokens'].size())
-#         print('*' * 40)
+
         if prev_output_tokens is not None:
             batch['net_input']['prev_output_tokens'] = prev_output_tokens
         return batch
