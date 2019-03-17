@@ -195,7 +195,7 @@ class MLETransformerDecoder(FairseqIncrementalDecoder):
                 x = F.linear(x, self.embed_tokens.weight)
             else:
                 x = F.linear(x, self.embed_out)
-        return x, {'attn_source': attn_source, 'attn_mask': attn_mask, 'inner_states': inner_states}
+        return x, {'attn': attn_source, 'inner_states': inner_states}
 
     def max_positions(self):
         """Maximum output length supported by the decoder."""
