@@ -1,6 +1,7 @@
 from .mask_mle_task import MaskMLETask
 from fairseq.tasks import register_task
 
+
 @register_task("mask_gan")
 class MaskGANTask(MaskMLETask):
 
