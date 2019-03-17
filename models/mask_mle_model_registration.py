@@ -2,11 +2,11 @@ from fairseq import utils
 from fairseq.models import FairseqModel, register_model
 from fairseq.models.transformer import Embedding
 
-from .mask_mle_models import MLETransformerEncoder, MLETransformerDecoder
+from .mask_mle_layers import MaskMLETransformerEncoder, MaskMLETransformerDecoder
 
 
-@register_model('mle_transformer')
-class MLETransformer(FairseqModel):
+@register_model('mask_mle_transformer')
+class MaskMLETransformer(FairseqModel):
 
     def __init__(self, encoder, decoder):
         print("created MLE Transformer")
@@ -101,13 +101,13 @@ class MLETransformer(FairseqModel):
             tgt_dict, args.decoder_embed_dim, args.decoder_embed_path
         )
 
-        encoder = MLETransformerEncoder(args, 
-                                        src_dict, tgt_dict, 
-                                        src_embed_tokens, tgt_embed_tokens)
+        encoder = MaskMLETransformerEncoder(args,
+                                            src_dict, tgt_dict,
+                                            src_embed_tokens, tgt_embed_tokens)
         
-        decoder = MLETransformerDecoder(args, tgt_dict, decoder_embed_tokens)
+        decoder = MaskMLETransformerDecoder(args, tgt_dict, decoder_embed_tokens)
         
-        return MLETransformer(encoder, decoder)
+        return MaskMLETransformer(encoder, decoder)
     
     def forward(self, src_tokens, src_lengths, masked_tgt, tgt_lengths, prev_output_tokens):
         encoder_out = self.encoder(src_tokens, src_lengths, masked_tgt, tgt_lengths)

@@ -12,8 +12,8 @@ import os
 import torch
 import itertools
 
-@register_task("mask_mle_vocalization")
-class MaskMLEVocalizationTask(TranslationTask):
+@register_task("mask_mle")
+class MaskMLETask(TranslationTask):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

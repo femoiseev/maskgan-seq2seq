@@ -8,12 +8,15 @@ from fairseq import utils
 from fairseq.models import FairseqEncoder
 from fairseq.models import FairseqIncrementalDecoder
 from fairseq.models.transformer import TransformerEncoder
+from fairseq.models.transformer import (
+    LayerNorm, Linear, PositionalEmbedding
+)
 from fairseq.modules import (
-    AdaptiveSoftmax, LearnedPositionalEmbedding, SinusoidalPositionalEmbedding, MultiheadAttention
+    AdaptiveSoftmax, SinusoidalPositionalEmbedding, MultiheadAttention,
 )
 
 
-class MLETransformerEncoder(FairseqEncoder):
+class MaskMLETransformerEncoder(FairseqEncoder):
     """
     Transformer encoder consisting of *args.encoder_layers* layers. Each layer
     is a :class:`TransformerEncoderLayer`.
@@ -93,7 +96,7 @@ class MLETransformerEncoder(FairseqEncoder):
         return encoder_out
 
 
-class MLETransformerDecoder(FairseqIncrementalDecoder):
+class MaskMLETransformerDecoder(FairseqIncrementalDecoder):
     def __init__(self, args, dictionary, embed_tokens, no_encoder_attn=False, left_pad=False, final_norm=True):
         super().__init__(dictionary)
         self.dropout = args.dropout
@@ -375,33 +378,3 @@ class MaskDecoderLayer(nn.Module):
 
     def make_generation_fast_(self, need_attn=False, **kwargs):
         self.need_attn = need_attn
-
-
-def Embedding(num_embeddings, embedding_dim, padding_idx):
-    m = nn.Embedding(num_embeddings, embedding_dim, padding_idx=padding_idx)
-    nn.init.normal_(m.weight, mean=0, std=embedding_dim ** -0.5)
-    nn.init.constant_(m.weight[padding_idx], 0)
-    return m
-
-
-def LayerNorm(embedding_dim):
-    m = nn.LayerNorm(embedding_dim)
-    return m
-
-
-def Linear(in_features, out_features, bias=True):
-    m = nn.Linear(in_features, out_features, bias)
-    nn.init.xavier_uniform_(m.weight)
-    if bias:
-        nn.init.constant_(m.bias, 0.)
-    return m
-
-
-def PositionalEmbedding(num_embeddings, embedding_dim, padding_idx, left_pad, learned=False):
-    if learned:
-        m = LearnedPositionalEmbedding(num_embeddings + padding_idx + 1, embedding_dim, padding_idx, left_pad)
-        nn.init.normal_(m.weight, mean=0, std=embedding_dim ** -0.5)
-        nn.init.constant_(m.weight[padding_idx], 0)
-    else:
-        m = SinusoidalPositionalEmbedding(embedding_dim, padding_idx, left_pad, num_embeddings + padding_idx + 1)
-    return m

@@ -1,10 +1,10 @@
 from fairseq.models import register_model_architecture
 
-from .mle_model_registration import MLETransformer
+from .mask_mle_model_registration import MaskMLETransformer
 from tasks.mask_mle_task import *
 
 
-@register_model_architecture('mle_transformer', 'mle_transformer_vocalization')
+@register_model_architecture('mask_mle_transformer', 'mask_mle_transformer_vocalization')
 def tr_voc_architecture(args):
     args.encoder_embed_path = getattr(args, 'encoder_embed_path', None)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 32)
