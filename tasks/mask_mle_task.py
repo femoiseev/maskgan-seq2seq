@@ -5,9 +5,10 @@ from dataloaders.mle_dataset import MLELanguagePairDataset
 from fairseq.data import (IndexedCachedDataset,
     IndexedDataset,
     IndexedRawTextDataset,
-    LanguagePairDataset,)
+    LanguagePairDataset,
+    ConcatDataset,
+    data_utils)
 import os
-import numpy
 import torch
 import itertools
 
@@ -47,8 +48,7 @@ class MaskMLEVocalizationTask(TranslationTask):
         print('| [{}] dictionary: {} types'.format(args.target_lang, len(tgt_dict)))
 
         return cls(args, src_dict, tgt_dict)
- 
-    
+
     def load_dataset(self, split, combine=False, **kwargs):
         """Load a given dataset split.
         Args:
