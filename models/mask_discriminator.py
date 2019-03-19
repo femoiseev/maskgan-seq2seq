@@ -1,15 +1,75 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from fairseq import utils
-from fairseq.models import FairseqModel, register_model
+from fairseq.models import FairseqModel
 from fairseq.models.transformer import Embedding
 
-from .mask_mle_layers import MaskMLETransformerEncoder, MaskMLETransformerDecoder
+from .mask_layers import (
+    MaskTransformerDecoder,
+    MaskTransformerEncoder
+)
 
 
-@register_model('mask_mle_transformer')
-class MaskMLETransformer(FairseqModel):
+class MaskDiscriminatorDecoder(MaskTransformerDecoder):
+    def __init__(self, args, dictionary, embed_tokens, no_encoder_attn=False, left_pad=False, final_norm=True):
+        super(self, MaskDiscriminatorDecoder).__init__(args, dictionary, embed_tokens, no_encoder_attn, left_pad, final_norm)
+
+        output_embed_dim = args.decoder_output_dim
+        self.logits = nn.Linear(output_embed_dim, 1)
+
+    def forward(self, prev_output_tokens, encoder_out, incremental_state=None):
+        positions = self.embed_positions(
+            prev_output_tokens,
+            incremental_state=incremental_state,
+        ) if self.embed_positions is not None else None
+
+        if incremental_state is not None:
+            prev_output_tokens = prev_output_tokens[:, -1:]
+            if positions is not None:
+                positions = positions[:, -1:]
+        # embed tokens and positions
+        x = self.embed_scale * self.embed_tokens(prev_output_tokens)
+        if self.project_in_dim is not None:
+            x = self.project_in_dim(x)
+        if positions is not None:
+            x += positions
+        x = F.dropout(x, p=self.dropout, training=self.training)
+
+        # B x T x C -> T x B x C
+        x = x.transpose(0, 1)
+        attn_source, attn_mask = None, None
+
+        inner_states = [x]
+
+        # decoder layers
+        for layer in self.layers:
+            x, attn_source, attn_mask = layer(
+                x,
+                encoder_out['source_encoder_out'] if encoder_out is not None else None,
+                encoder_out['source_encoder_padding_mask'] if encoder_out is not None else None,
+                encoder_out['mask_encoder_out'] if encoder_out is not None else None,
+                encoder_out['mask_encoder_padding_mask'] if encoder_out is not None else None,
+                incremental_state,
+                self_attn_mask=self.buffered_future_mask(x) if incremental_state is None else None,
+            )
+            inner_states.append(x)
+
+        if self.normalize:
+            x = self.layer_norm(x)
+        # T x B x C -> B x T x C
+        x = x.transpose(0, 1)
+        if self.project_out_dim is not None:
+            x = self.project_out_dim(x)
+
+        x = self.logits(x)
+        return x, {'attn': attn_source, 'inner_states': inner_states}
+
+
+class MaskTransformerDiscriminator(FairseqModel):
 
     def __init__(self, encoder, decoder):
-        print("created MLE Transformer")
+        print("created MLE Discriminator")
         super().__init__(encoder, decoder)
 
     @staticmethod
@@ -68,8 +128,8 @@ class MaskMLETransformer(FairseqModel):
     def build_model(cls, args, task):
         """Build a new model instance."""
 
-#         # make sure all arguments are present in older models
-#         base_architecture(args)
+        #         # make sure all arguments are present in older models
+        #         base_architecture(args)
 
         if not hasattr(args, 'max_source_positions'):
             args.max_source_positions = 1024
@@ -79,7 +139,7 @@ class MaskMLETransformer(FairseqModel):
         src_dict, tgt_dict = task.source_dictionary, task.target_dictionary
 
         def build_embedding(dictionary, embed_dim, path=None):
-                
+
             num_embeddings = len(dictionary)
             padding_idx = dictionary.pad()
             emb = Embedding(num_embeddings, embed_dim, padding_idx)
@@ -90,26 +150,27 @@ class MaskMLETransformer(FairseqModel):
             return emb
 
         src_embed_tokens = build_embedding(
-             src_dict, args.encoder_embed_dim, args.encoder_embed_path
-         )
-            
+            src_dict, args.encoder_embed_dim, args.encoder_embed_path
+        )
+
         tgt_embed_tokens = build_embedding(
             tgt_dict, args.encoder_embed_dim, args.decoder_embed_path
         )
-        
+
         decoder_embed_tokens = build_embedding(
             tgt_dict, args.decoder_embed_dim, args.decoder_embed_path
         )
 
-        encoder = MaskMLETransformerEncoder(args,
-                                            src_dict, tgt_dict,
-                                            src_embed_tokens, tgt_embed_tokens)
-        
-        decoder = MaskMLETransformerDecoder(args, tgt_dict, decoder_embed_tokens)
-        
-        return MaskMLETransformer(encoder, decoder)
-    
+        encoder = MaskTransformerEncoder(args,
+                                         src_dict, tgt_dict,
+                                         src_embed_tokens, tgt_embed_tokens)
+
+        decoder = MaskDiscriminatorDecoder(args, tgt_dict, decoder_embed_tokens)
+
+        return MaskTransformerDiscriminator(encoder, decoder)
+
     def forward(self, src_tokens, src_lengths, masked_tgt, tgt_lengths, prev_output_tokens):
         encoder_out = self.encoder(src_tokens, src_lengths, masked_tgt, tgt_lengths)
         decoder_out = self.decoder(prev_output_tokens, encoder_out)
+
         return decoder_out

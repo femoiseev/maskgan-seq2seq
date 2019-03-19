@@ -16,7 +16,7 @@ from fairseq.modules import (
 )
 
 
-class MaskMLETransformerEncoder(FairseqEncoder):
+class MaskTransformerEncoder(FairseqEncoder):
     """
     Transformer encoder consisting of *args.encoder_layers* layers. Each layer
     is a :class:`TransformerEncoderLayer`.
@@ -96,7 +96,7 @@ class MaskMLETransformerEncoder(FairseqEncoder):
         return encoder_out
 
 
-class MaskMLETransformerDecoder(FairseqIncrementalDecoder):
+class MaskTransformerDecoder(FairseqIncrementalDecoder):
     def __init__(self, args, dictionary, embed_tokens, no_encoder_attn=False, left_pad=False, final_norm=True):
         super().__init__(dictionary)
         self.dropout = args.dropout

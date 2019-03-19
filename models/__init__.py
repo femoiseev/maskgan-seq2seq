@@ -1,6 +1,6 @@
 from fairseq.models import register_model_architecture
 
-from .mask_mle_model_registration import MaskMLETransformer
+from .mask_model_registration import MaskTransformer
 from tasks.mask_mle_task import *
 
 
