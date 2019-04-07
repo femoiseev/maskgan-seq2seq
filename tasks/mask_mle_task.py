@@ -12,13 +12,13 @@ import os
 import torch
 import itertools
 
+
 @register_task("mask_mle")
 class MaskMLETask(TranslationTask):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    
     @classmethod
     def setup_task(cls, args, **kwargs):
         """Setup the task (e.g., load dictionaries).
@@ -120,6 +120,5 @@ class MaskMLETask(TranslationTask):
             max_target_positions=self.args.max_target_positions,
         )
 
-    
     def build_dataset_for_inference(self, src_tokens, src_lengths):
         return MLELanguagePairDataset(src_tokens, src_lengths, self.source_dictionary)

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from fairseq import utils
-from fairseq.models import FairseqModel
+from fairseq.models import FairseqModel, register_model
 from fairseq.models.transformer import Embedding
 
 from .mask_layers import (
@@ -13,7 +13,7 @@ from .mask_layers import (
 
 class MaskDiscriminatorDecoder(MaskTransformerDecoder):
     def __init__(self, args, dictionary, embed_tokens, no_encoder_attn=False, left_pad=False, final_norm=True):
-        super(self, MaskDiscriminatorDecoder).__init__(args, dictionary, embed_tokens, no_encoder_attn, left_pad, final_norm)
+        super().__init__(args, dictionary, embed_tokens, no_encoder_attn, left_pad, final_norm)
 
         output_embed_dim = args.decoder_output_dim
         self.logits = nn.Linear(output_embed_dim, 1)
@@ -66,6 +66,7 @@ class MaskDiscriminatorDecoder(MaskTransformerDecoder):
         return x, {'attn': attn_source, 'inner_states': inner_states}
 
 
+@register_model('mask_discriminator')
 class MaskTransformerDiscriminator(FairseqModel):
 
     def __init__(self, encoder, decoder):
@@ -122,7 +123,6 @@ class MaskTransformerDiscriminator(FairseqModel):
                                  'Must be used with adaptive_loss criterion'),
         parser.add_argument('--adaptive-softmax-dropout', type=float, metavar='D',
                             help='sets adaptive softmax dropout for the tail projections')
-        # fmt: on
 
     @classmethod
     def build_model(cls, args, task):
