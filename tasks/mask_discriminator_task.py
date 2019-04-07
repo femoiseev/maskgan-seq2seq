@@ -23,7 +23,6 @@ class MaskDiscriminatorTask(MaskMLETask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.generator = self.load_pretrained_generator(args[0].generator_path)
-
         if not args[0].cpu:
             self.generator.cuda()
 
