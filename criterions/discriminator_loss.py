@@ -37,12 +37,40 @@ class DiscriminatorCriterion(FairseqCriterion):
         return loss, sample_size, logging_output
 
     def compute_loss(self, model, real_output, fake_output, sample, reduce=True):
+        tgt_lengths = sample['net_input']['tgt_lengths']
+
+        # print(tgt_lengths[0])
+        # print(sample['target'].size())
+        # print(sample['masks'].size())
+        # print(type(tgt_lengths))
+        # print(tgt_lengths.size())
+        # print("real_output before")
+        # print(real_output.size())
+        # print("fake_output before")
+        # print(fake_output.size())
+        # return None
+        start_shape = real_output.size()
+
         real_output = real_output.view(-1, real_output.size(-1))
         fake_output = real_output.view(-1, fake_output.size(-1))
+
         output = torch.cat((real_output, fake_output), dim=0).view((-1,))
+        # print("output.size ", output.size())
         target = torch.cat((torch.ones(real_output.size(0), dtype=torch.long, device=real_output.device),
                             torch.zeros(fake_output.size(0), dtype=torch.long, device=fake_output.device)), dim=0)
-        loss = F.binary_cross_entropy_with_logits(output, target.float(), size_average=False, reduce=reduce) #ignore_index=self.padding_idx
+        # print("target size ", target.size())
+        loss = F.binary_cross_entropy_with_logits(output, target.float(), reduction='none') #ignore_index=self.padding_idx
+        # print("loss.size ", loss.size())
+        # print("mask size ", sample['masks'].size())
+        new_mask = sample['masks'][:, :start_shape[1]]
+        # print("new mask size ", new_mask.size())
+        loss = loss.view((start_shape[0], start_shape[1], 2))
+        # print("new loss size ", loss.size())
+        loss = loss * (new_mask[:, :, None])
+        # loss[:, :, 0] = loss[:, :, 0] * (1. - new_mask)
+        # loss[:, :, 1] = loss[:, :, 1] * (1. - new_mask)
+        # loss = loss * (1. - sample['masks'])
+        loss = torch.sum(loss) / torch.sum(new_mask)
         return loss, loss
 
     @staticmethod

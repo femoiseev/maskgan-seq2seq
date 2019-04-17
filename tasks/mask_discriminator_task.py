@@ -16,6 +16,8 @@ import itertools
 from tasks.mask_mle_task import MaskMLETask
 from models import MaskTransformer
 
+import fairseq
+print(fairseq.__version__)
 
 @register_task("mask_discriminator")
 class MaskDiscriminatorTask(MaskMLETask):
