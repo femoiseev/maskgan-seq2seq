@@ -50,8 +50,8 @@ class MaskDiscriminatorTask(MaskMLETask):
 
         task = MaskMLETask(args, src_dict, tgt_dict)
         model = task.build_model(args)
-        model.upgrade_state_dict(state_dict)
-        model.load_state_dict(state_dict, strict=True)
+        # model.upgrade_state_dict(state_dict)
+        # model.load_state_dict(state_dict, strict=True)
         return model
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
@@ -76,12 +76,27 @@ class MaskDiscriminatorTask(MaskMLETask):
         model.train()
 
         generated = self.sequence_generator.generate((self.generator, ), sample)
+        # print("len {}".format(len(generated)))
+        # print("generated[0].tokens: ")
+        # print(generated[0][0]['tokens'])
+        # print("sample target ")
+        # print(sample['target'][0])
+        # print(sample['masks'][0])
+
         max_len = sample['target'].shape[1] - 1
         tokens = [x[0]['tokens'] for x in generated]
         lengths = [min(max_len, x.shape[0]) for x in tokens]
-        generated_sents = torch.stack([torch.cat((x[:length], sample['target'].new_full((max_len - length,), self.target_dictionary.pad()))) for x, length in zip(tokens, lengths)])
-        sample['generated_sents'] = generated_sents
+        generated_sents = torch.stack([torch.cat(
+            (
+                sample['target'].new_full((max_len - length ,), self.target_dictionary.pad()),
+                x[:length],
+            )
+        ) for x, length in zip(tokens, lengths)])
 
+        sample['generated_sents'] = generated_sents
+        # print("sample[generated_sents]")
+        # print(sample['generated_sents'][0])
+        # return
         sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'][:, 1:]
         loss, sample_size, logging_output = criterion(model, sample)
         if ignore_grad:
@@ -97,7 +112,12 @@ class MaskDiscriminatorTask(MaskMLETask):
             max_len = sample['target'].shape[1] - 1
             tokens = [x[0]['tokens'] for x in generated]
             lengths = [min(max_len, x.shape[0]) for x in tokens]
-            generated_sents = torch.stack([torch.cat((x[:length], sample['target'].new_full((max_len - length,), self.target_dictionary.pad()))) for x, length in zip(tokens, lengths)])
+            generated_sents = torch.stack([torch.cat(
+                (
+                    sample['target'].new_full((max_len - length ,), self.target_dictionary.pad()),
+                    x[:length]
+                )
+            ) for x, length in zip(tokens, lengths)])
             sample['generated_sents'] = generated_sents
 
             sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'][:, 1:]

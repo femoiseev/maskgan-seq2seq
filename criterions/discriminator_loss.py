@@ -44,11 +44,35 @@ class DiscriminatorCriterion(FairseqCriterion):
         # print(sample['masks'].size())
         # print(type(tgt_lengths))
         # print(tgt_lengths.size())
-        # print("real_output before")
-        # print(real_output.size())
-        # print("fake_output before")
-        # print(fake_output.size())
         # return None
+
+        print("#" * 40)
+        print("compute loss block")
+
+        print("real_output before")
+        print(real_output.size())
+        print("fake_output before")
+        print(fake_output.size())
+
+        print('real output[0]')
+        print(real_output[0])
+        print('fake output')
+        print(fake_output[0])
+        print("masks")
+        print(sample['masks'][0])
+        print('masks size')
+        print(sample['masks'].size())
+        print("#" * 40)
+
+        start_shape = real_output.size()
+        new_mask = sample['masks'][:, :start_shape[1]]
+        print('new masks size')
+        print(new_mask.size())
+        print("median real on mask 1")
+        print(torch.median(real_output * new_mask.unsqueeze(-1)))
+        print("median fake on mask 1")
+        print(torch.median(fake_output * new_mask.unsqueeze(-1)))
+
         start_shape = real_output.size()
 
         real_output = real_output.view(-1, real_output.size(-1))
@@ -60,6 +84,17 @@ class DiscriminatorCriterion(FairseqCriterion):
                             torch.zeros(fake_output.size(0), dtype=torch.long, device=fake_output.device)), dim=0)
         # print("target size ", target.size())
         loss = F.binary_cross_entropy_with_logits(output, target.float(), reduction='none') #ignore_index=self.padding_idx
+
+        # output =  torch.cat((0.99999 * torch.ones(real_output.size(0), dtype=torch.float, device=real_output.device),
+        #                     0.000001 + torch.zeros(fake_output.size(0), dtype=torch.float, device=fake_output.device)), dim=0)
+
+        # output = torch.log(output)
+
+        output = 0.001 + torch.distributions.Bernoulli(0.5 * torch.ones(output.size(0))).sample().cuda() * 0.99
+
+        print("output size ", output.size())
+        print("target size ", target.size())
+        stupid_loss = F.binary_cross_entropy(output, target.float(), reduction='none')
         # print("loss.size ", loss.size())
         # print("mask size ", sample['masks'].size())
         new_mask = sample['masks'][:, :start_shape[1]]
@@ -71,6 +106,11 @@ class DiscriminatorCriterion(FairseqCriterion):
         # loss[:, :, 1] = loss[:, :, 1] * (1. - new_mask)
         # loss = loss * (1. - sample['masks'])
         loss = torch.sum(loss) / torch.sum(new_mask)
+
+        stupid_loss = stupid_loss.view((start_shape[0], start_shape[1], 2))
+        stupid_loss = stupid_loss * (new_mask[:, :, None])
+        stupid_loss = torch.sum(stupid_loss) / torch.sum(new_mask)
+        print("stupid loss {:.5f}".format(stupid_loss.item()))
         return loss, loss
 
     @staticmethod
