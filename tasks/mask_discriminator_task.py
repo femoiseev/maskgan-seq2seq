@@ -16,6 +16,9 @@ import itertools
 from tasks.mask_mle_task import MaskMLETask
 from models import MaskTransformer
 
+import fairseq
+print(fairseq.__version__)
+
 
 @register_task("mask_discriminator")
 class MaskDiscriminatorTask(MaskMLETask):
@@ -48,8 +51,8 @@ class MaskDiscriminatorTask(MaskMLETask):
 
         task = MaskMLETask(args, src_dict, tgt_dict)
         model = task.build_model(args)
-        model.upgrade_state_dict(state_dict)
-        model.load_state_dict(state_dict, strict=True)
+        # model.upgrade_state_dict(state_dict)
+        # model.load_state_dict(state_dict, strict=True)
         return model
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
@@ -74,13 +77,23 @@ class MaskDiscriminatorTask(MaskMLETask):
         model.train()
 
         generated = self.sequence_generator.generate((self.generator, ), sample)
-        max_len = sample['target'].shape[1] - 1
+
+        max_len = sample['target'].shape[1]
         tokens = [x[0]['tokens'] for x in generated]
         lengths = [min(max_len, x.shape[0]) for x in tokens]
-        generated_sents = torch.stack([torch.cat((x[:length], sample['target'].new_full((max_len - length,), self.target_dictionary.pad()))) for x, length in zip(tokens, lengths)])
-        sample['generated_sents'] = generated_sents
+        generated_sents = torch.stack([torch.cat(
+            (
+                sample['target'].new_full(
+                    (max_len - length,),
+                    self.target_dictionary.pad()
+                ),
+                x[:length],
+            )
+        ) for x, length in zip(tokens, lengths)])
 
-        sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'][:, 1:]
+        sample['generated_sents'] = generated_sents
+        # return
+        # sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens']
         loss, sample_size, logging_output = criterion(model, sample)
         if ignore_grad:
             loss *= 0
@@ -92,13 +105,17 @@ class MaskDiscriminatorTask(MaskMLETask):
         model.eval()
         with torch.no_grad():
             generated = self.sequence_generator.generate((self.generator,), sample)
-            max_len = sample['target'].shape[1] - 1
+            max_len = sample['target'].shape[1]
             tokens = [x[0]['tokens'] for x in generated]
             lengths = [min(max_len, x.shape[0]) for x in tokens]
-            generated_sents = torch.stack([torch.cat((x[:length], sample['target'].new_full((max_len - length,), self.target_dictionary.pad()))) for x, length in zip(tokens, lengths)])
+            generated_sents = torch.stack([torch.cat(
+                (
+                    sample['target'].new_full((max_len - length ,), self.target_dictionary.pad()),
+                    x[:length]
+                )
+            ) for x, length in zip(tokens, lengths)])
             sample['generated_sents'] = generated_sents
 
-            sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'][:, 1:]
             loss, sample_size, logging_output = criterion(model, sample)
         return loss, sample_size, logging_output
 

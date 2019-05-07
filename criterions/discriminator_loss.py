@@ -37,12 +37,20 @@ class DiscriminatorCriterion(FairseqCriterion):
         return loss, sample_size, logging_output
 
     def compute_loss(self, model, real_output, fake_output, sample, reduce=True):
-        real_output = real_output.view(-1, real_output.size(-1))
-        fake_output = real_output.view(-1, fake_output.size(-1))
-        output = torch.cat((real_output, fake_output), dim=0).view((-1,))
-        target = torch.cat((torch.ones(real_output.size(0), dtype=torch.long, device=real_output.device),
-                            torch.zeros(fake_output.size(0), dtype=torch.long, device=fake_output.device)), dim=0)
-        loss = F.binary_cross_entropy_with_logits(output, target.float(), size_average=False, reduce=reduce) #ignore_index=self.padding_idx
+        new_mask = sample['masks']
+        real_output = real_output.squeeze()
+        fake_output = fake_output.squeeze()
+
+        output = torch.cat((real_output, fake_output), dim=0)
+        target = torch.cat((torch.ones(real_output.size(), dtype=torch.long, device=real_output.device),
+                            torch.zeros(fake_output.size(), dtype=torch.long, device=fake_output.device)), dim=0)
+        loss = F.binary_cross_entropy_with_logits(output, target.float(), reduction='none')
+
+        num_samples, seq_len = real_output.shape
+        loss = loss.view((2, num_samples, seq_len))
+        loss = loss * (new_mask[None, :, :])
+        loss = torch.sum(loss) / torch.sum(new_mask)
+
         return loss, loss
 
     @staticmethod
@@ -53,11 +61,11 @@ class DiscriminatorCriterion(FairseqCriterion):
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
         agg_output = {
-            'loss': loss_sum / sample_size / math.log(2),
+            'loss': loss_sum,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'sample_size': sample_size,
         }
         if sample_size != ntokens:
-            agg_output['nll_loss'] = loss_sum / ntokens / math.log(2)
+            agg_output['nll_loss'] = loss_sum / math.log(2)
         return agg_output
