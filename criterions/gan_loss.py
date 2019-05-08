@@ -8,7 +8,7 @@ from fairseq.sequence_generator import SequenceGenerator
 
 from fairseq.criterions import FairseqCriterion, register_criterion
 
-from ..models.mask_discriminator import MaskTransformerDiscriminator
+from models.mask_discriminator import MaskTransformerDiscriminator
 
 
 @register_criterion('gan_loss')

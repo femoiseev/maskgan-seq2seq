@@ -2,9 +2,8 @@ from fairseq.models import register_model_architecture
 
 from .mask_model_registration import MaskTransformer
 from .mask_discriminator import MaskTransformerDiscriminator
-from tasks.mask_mle_task import *
-from tasks.mask_discriminator_task import *
-from criterions.discriminator_loss import *
+from tasks import *
+from criterions import *
 
 
 @register_model_architecture('mask_transformer', 'mask_transformer_vocalization')
@@ -50,7 +49,7 @@ def tr_voc_architecture(args):
     args.decoder_ffn_embed_dim = getattr(args, 'decoder_ffn_embed_dim', args.encoder_ffn_embed_dim)
     args.decoder_layers = getattr(args, 'decoder_layers', 6)
     args.decoder_attention_heads = getattr(args, 'decoder_attention_heads', 4)
-    args.decoder_normalize_before = getattr(args, 'decoder_normalize_before', False)
+    args.decoder_normalize_before = getattr(args, 'decoder_normalize_before', True)
     args.decoder_learned_pos = getattr(args, 'decoder_learned_pos', False)
     args.attention_dropout = getattr(args, 'attention_dropout', 0.)
     args.relu_dropout = getattr(args, 'relu_dropout', 0.)
@@ -79,7 +78,7 @@ def tr_he_en_architecture(args):
     args.decoder_ffn_embed_dim = getattr(args, 'decoder_ffn_embed_dim', args.encoder_ffn_embed_dim)
     args.decoder_layers = getattr(args, 'decoder_layers', 6)
     args.decoder_attention_heads = getattr(args, 'decoder_attention_heads', 8)
-    args.decoder_normalize_before = getattr(args, 'decoder_normalize_before', False)
+    args.decoder_normalize_before = getattr(args, 'decoder_normalize_before', True)
     args.decoder_learned_pos = getattr(args, 'decoder_learned_pos', False)
     args.attention_dropout = getattr(args, 'attention_dropout', 0.)
     args.relu_dropout = getattr(args, 'relu_dropout', 0.)
@@ -101,7 +100,7 @@ def discr_voc_architecture(args):
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 64)
     args.encoder_layers = getattr(args, 'encoder_layers', 6)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 4)
-    args.encoder_normalize_before = getattr(args, 'encoder_normalize_before', False)
+    args.encoder_normalize_before = getattr(args, 'encoder_normalize_before', True)
     args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', False)
     args.decoder_embed_path = getattr(args, 'decoder_embed_path', None)
     args.decoder_embed_dim = getattr(args, 'decoder_embed_dim', args.encoder_embed_dim)

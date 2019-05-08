@@ -23,7 +23,7 @@ class DiscriminatorCriterion(FairseqCriterion):
         """
         real_output = model(**sample['net_input'])[0]
         fake_input = deepcopy(sample['net_input'])
-        fake_input['prev_output_tokens'] = sample['generated_sents']
+        fake_input['prev_output_tokens'] = sample['generated_tokens']
         fake_output = model(**fake_input)[0]
 
         loss, _ = self.compute_loss(model, real_output, fake_output, sample, reduce=reduce)
@@ -48,8 +48,6 @@ class DiscriminatorCriterion(FairseqCriterion):
 
         num_samples, seq_len = real_output.shape
         loss = loss.view((2, num_samples, seq_len))
-        loss = loss * (new_mask[None, :, :])
-        loss = torch.sum(loss) / torch.sum(new_mask)
 
         return loss, loss
 

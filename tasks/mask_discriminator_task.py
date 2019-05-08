@@ -33,7 +33,7 @@ class MaskDiscriminatorTask(MaskMLETask):
 
     @staticmethod
     def add_args(parser):
-        MaskMLETask.add_args(parser)
+        super(MaskDiscriminatorTask, MaskDiscriminatorTask).add_args(parser)
 
         parser.add_argument('--generator-path', type=str, help='path to trained generator')
 
@@ -51,8 +51,8 @@ class MaskDiscriminatorTask(MaskMLETask):
 
         task = MaskMLETask(args, src_dict, tgt_dict)
         model = task.build_model(args)
-        # model.upgrade_state_dict(state_dict)
-        # model.load_state_dict(state_dict, strict=True)
+        model.upgrade_state_dict(state_dict)
+        model.load_state_dict(state_dict, strict=True)
         return model
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
@@ -81,7 +81,7 @@ class MaskDiscriminatorTask(MaskMLETask):
         max_len = sample['target'].shape[1]
         tokens = [x[0]['tokens'] for x in generated]
         lengths = [min(max_len, x.shape[0]) for x in tokens]
-        generated_sents = torch.stack([torch.cat(
+        generated_tokens = torch.stack([torch.cat(
             (
                 sample['target'].new_full(
                     (max_len - length,),
@@ -91,7 +91,7 @@ class MaskDiscriminatorTask(MaskMLETask):
             )
         ) for x, length in zip(tokens, lengths)])
 
-        sample['generated_sents'] = generated_sents
+        sample['generated_tokens'] = generated_tokens
         # return
         # sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens']
         loss, sample_size, logging_output = criterion(model, sample)

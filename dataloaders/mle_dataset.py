@@ -85,7 +85,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
         else:
             ntokens = sum(len(s['source']) for s in samples)
 
-        p = 0.95
+        p = 0.5
         mask = torch.distributions.Bernoulli(torch.Tensor([p]))
         mask_tensor = None
 
