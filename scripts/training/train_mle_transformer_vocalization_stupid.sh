@@ -8,4 +8,4 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --warmup-updates 2500 \
   --criterion label_smoothed_cross_entropy \
   --adam-betas '(0.9, 0.98)' --save-dir ../../checkpoints/mle_transformer_vocalization_stupid \
-  --keep-last-epochs 100 --max-epoch 50
+  --keep-last-epochs 100 --max-epoch 100

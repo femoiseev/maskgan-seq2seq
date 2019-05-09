@@ -42,12 +42,14 @@ class DiscriminatorCriterion(FairseqCriterion):
         fake_output = fake_output.squeeze()
 
         output = torch.cat((real_output, fake_output), dim=0)
-        target = torch.cat((torch.ones(real_output.size(), dtype=torch.long, device=real_output.device),
-                            torch.zeros(fake_output.size(), dtype=torch.long, device=fake_output.device)), dim=0)
+        target = torch.cat((torch.ones(real_output.size(), dtype=torch.long, device=real_output.device) - 0.1,
+                            torch.zeros(fake_output.size(), dtype=torch.long, device=fake_output.device) + 0.1), dim=0)
         loss = F.binary_cross_entropy_with_logits(output, target.float(), reduction='none')
 
         num_samples, seq_len = real_output.shape
         loss = loss.view((2, num_samples, seq_len))
+        loss = loss * (new_mask[None, :, :])
+        loss = torch.sum(loss) / torch.sum(new_mask)
 
         return loss, loss
 
