@@ -114,7 +114,7 @@ class MaskDiscriminatorTask(MaskMLETask):
                     x[:length]
                 )
             ) for x, length in zip(tokens, lengths)])
-            sample['generated_sents'] = generated_sents
+            sample['generated_tokens'] = generated_sents
 
             loss, sample_size, logging_output = criterion(model, sample)
         return loss, sample_size, logging_output

@@ -23,7 +23,8 @@ class MaskGeneratorCriterion(FairseqCriterion):
         if not args.cpu:
             self.discriminator.cuda()
 
-        self.beam_generator = SequenceGenerator(task.target_dictionary, beam_size=1)
+        self.beam_generator = SequenceGenerator(task.target_dictionary, beam_size=5)
+        self.greedy_generator = SequenceGenerator(task.target_dictionary, beam_size=1)
         self.gamma = args.gamma
 
     @staticmethod
@@ -60,7 +61,7 @@ class MaskGeneratorCriterion(FairseqCriterion):
 
         logits = model(**sample['net_input'])[0]
 
-        generated = self.beam_generator.generate((model,), sample)
+        generated = self.greedy_generator.generate((model,), sample)
         max_len = sample['target'].shape[1]
         tokens = [x[0]['tokens'] for x in generated]
         lengths = [min(max_len, x.shape[0]) for x in tokens]
@@ -73,8 +74,24 @@ class MaskGeneratorCriterion(FairseqCriterion):
                 x[:length],
             )
         ) for x, length in zip(tokens, lengths)]))
+        sample['generated_greedy'] = generated_tokens
 
-        loss, mean_prob = self.compute_loss(model, logits, generated_tokens, sample, reduce=reduce)
+        # generated = self.beam_generator.generate((model,), sample)
+        # max_len = sample['target'].shape[1]
+        # tokens = [x[0]['tokens'] for x in generated]
+        # lengths = [min(max_len, x.shape[0]) for x in tokens]
+        # generated_tokens = torch.stack(tuple([torch.cat(
+        #     (
+        #         sample['target'].new_full(
+        #             (max_len - length,),
+        #             self.target_dictionary.pad()
+        #         ),
+        #         x[:length],
+        #     )
+        # ) for x, length in zip(tokens, lengths)]))
+        # sample['generated_beam'] = generated_tokens
+
+        loss, mean_prob = self.compute_loss(model, logits, sample, reduce=reduce)
         sample_size = sample['target'].size(0) if self.args.sentence_avg else sample['ntokens']
         logging_output = {
             'loss': utils.item(loss.data) if reduce else loss.data,
@@ -85,27 +102,96 @@ class MaskGeneratorCriterion(FairseqCriterion):
         }
         return loss, sample_size, logging_output
 
-    def compute_loss(self, model, logits, generated_tokens, sample, reduce=True):
+    def compute_loss(self, model, logits, sample, reduce=True):
         new_mask = sample['masks']
 
         fake_input = deepcopy(sample['net_input'])
-        fake_input['prev_output_tokens'] = generated_tokens
+        fake_input['prev_output_tokens'] = sample['generated_greedy']
         discriminator_logits = self.discriminator(**fake_input)[0]
-        rewards = F.logsigmoid(discriminator_logits)[:, :, 0]
+        rewards_greedy = F.logsigmoid(discriminator_logits)[:, :, 0].detach() - math.log(0.5)
 
+        # fake_input = deepcopy(sample['net_input'])
+        # fake_input['prev_output_tokens'] = sample['generated_beam']
+        # discriminator_logits = self.discriminator(**fake_input)[0]
+        # rewards_beam = F.logsigmoid(discriminator_logits)[:, :, 0].detach() - math.log(0.5)
+
+        rewards = rewards_greedy  # - rewards_beam
+        mask_rewards = rewards * new_mask
+        cumulative_rewards = torch.flip(torch.cumsum(torch.flip(mask_rewards, (-1,)), dim=-1), (-1,))
+
+        generated_tokens = sample['generated_greedy']
         logprobs = F.log_softmax(logits, dim=-1)
         generated_shape = generated_tokens.shape
-        dict_size  = logprobs.shape[-1]
+        dict_size = logprobs.shape[-1]
         num_tokens = generated_shape[0] * generated_shape[1]
         chosen_logprobs = logprobs.reshape(num_tokens, dict_size)[torch.arange(num_tokens),
                                                                   generated_tokens.reshape(-1,)].reshape(generated_shape)
-        J = chosen_logprobs * rewards
-        J = J * new_mask
+        J = chosen_logprobs * cumulative_rewards
+        J *= new_mask
         loss = -torch.sum(J) / torch.sum(new_mask)
-        probs = torch.exp(rewards) * new_mask
+        probs = torch.exp(rewards_greedy + math.log(0.5)) * new_mask
         mean_prob = torch.sum(probs) / torch.sum(new_mask)
 
         return loss, mean_prob
+
+    # def forward(self, model, sample, reduce=True):
+    #     """Compute the loss for the given sample.
+    #     Returns a tuple with three elements:
+    #     1) the loss
+    #     2) the sample size, which is used as the denominator for the gradient
+    #     3) logging outputs to display while training
+    #     """
+    #
+    #     logits = model(**sample['net_input'])[0]
+    #
+    #     generated = self.beam_generator.generate((model,), sample)
+    #     max_len = sample['target'].shape[1]
+    #     tokens = [x[0]['tokens'] for x in generated]
+    #     lengths = [min(max_len, x.shape[0]) for x in tokens]
+    #     generated_tokens = torch.stack(tuple([torch.cat(
+    #         (
+    #             sample['target'].new_full(
+    #                 (max_len - length,),
+    #                 self.target_dictionary.pad()
+    #             ),
+    #             x[:length],
+    #         )
+    #     ) for x, length in zip(tokens, lengths)]))
+    #
+    #     loss, mean_prob = self.compute_loss(model, logits, generated_tokens, sample, reduce=reduce)
+    #     sample_size = sample['target'].size(0) if self.args.sentence_avg else sample['ntokens']
+    #     logging_output = {
+    #         'loss': utils.item(loss.data) if reduce else loss.data,
+    #         'mean_prob': mean_prob.item(),
+    #         'ntokens': sample['ntokens'],
+    #         'nsentences': sample['target'].size(0),
+    #         'sample_size': sample_size,
+    #     }
+    #     return loss, sample_size, logging_output
+    #
+    # def compute_loss(self, model, logits, generated_tokens, sample, reduce=True):
+    #     new_mask = sample['masks']
+    #
+    #     fake_input = deepcopy(sample['net_input'])
+    #     fake_input['prev_output_tokens'] = generated_tokens
+    #     discriminator_logits = self.discriminator(**fake_input)[0]
+    #     rewards = F.logsigmoid(discriminator_logits)[:, :, 0].detach() - math.log(0.5)
+    #     mask_rewards = rewards * new_mask
+    #     cumulative_rewards = torch.flip(torch.cumsum(torch.flip(mask_rewards, (-1,)), dim=-1), (-1,))
+    #
+    #     logprobs = F.log_softmax(logits, dim=-1)
+    #     generated_shape = generated_tokens.shape
+    #     dict_size = logprobs.shape[-1]
+    #     num_tokens = generated_shape[0] * generated_shape[1]
+    #     chosen_logprobs = logprobs.reshape(num_tokens, dict_size)[torch.arange(num_tokens),
+    #                                                               generated_tokens.reshape(-1,)].reshape(generated_shape)
+    #     J = chosen_logprobs * cumulative_rewards
+    #     J *= new_mask
+    #     loss = -torch.sum(J) / torch.sum(new_mask)
+    #     probs = torch.exp(rewards + math.log(0.5)) * new_mask
+    #     mean_prob = torch.sum(probs) / torch.sum(new_mask)
+    #
+    #     return loss, mean_prob
 
     @staticmethod
     def aggregate_logging_outputs(logging_outputs):
