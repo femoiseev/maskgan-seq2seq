@@ -1,10 +1,10 @@
 import torch
 from fairseq.data.language_pair_dataset import LanguagePairDataset
 from fairseq.data import data_utils
-    
-    
+
+
 class MLELanguagePairDataset(LanguagePairDataset):
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cnts = 0
@@ -46,7 +46,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
         src_tokens = merge('source', self.src_dict.pad(),
                            self.src_dict.eos(),
                            left_pad=self.left_pad_source)
-        
+
         # sort by descending source length
         src_lengths = torch.LongTensor([s['source'].numel() for s in samples])
         src_lengths, sort_order = src_lengths.sort(descending=True)
@@ -58,7 +58,7 @@ class MLELanguagePairDataset(LanguagePairDataset):
         tgt_lengths = None
         ok_target = None
         if samples[0].get('target', None) is not None:
-            
+
             target = merge('target', self.tgt_dict.pad(),
                            self.tgt_dict.eos(),
                            left_pad=self.left_pad_source)
@@ -66,7 +66,8 @@ class MLELanguagePairDataset(LanguagePairDataset):
                               self.tgt_dict.eos(),
                               left_pad=self.left_pad_target)
 
-            tgt_lengths = torch.LongTensor([s['target'].numel() for s in samples])
+            tgt_lengths = torch.LongTensor(
+                [s['target'].numel() for s in samples])
             target = target.index_select(0, sort_order)
             ok_target = ok_target.index_select(0, sort_order)
             tgt_lengths = tgt_lengths.index_select(0, sort_order)
@@ -81,26 +82,21 @@ class MLELanguagePairDataset(LanguagePairDataset):
                     left_pad=self.left_pad_target,
                     move_eos_to_beginning=True,
                 )
-                prev_output_tokens = prev_output_tokens.index_select(0, sort_order)
+                prev_output_tokens = prev_output_tokens.index_select(0,
+                                                                     sort_order)
         else:
             ntokens = sum(len(s['source']) for s in samples)
 
-        p = 0.5
-        mask = torch.distributions.Bernoulli(torch.Tensor([p]))
-        mask_tensor = None
-
-        if samples[0].get('target', None) is not None:
-            mask_tensor = mask.sample(target.size())[:, :, 0]
-
-            # target[mask_tensor.byte()] = self.tgt_dict.index("<MASK>")
-            target[(target != self.tgt_dict.pad()) & (mask_tensor.byte())] = self.tgt_dict.index("<MASK>")
-            mask_tensor[(target == self.tgt_dict.pad())] = 0
-            # for i in range(len(target)):
-            #     for j in range(len(target[i])):
-            #         if target[i, j] != self.tgt_dict.pad():
-            #             mask_val = mask.sample()
-            #             if mask_val:
-            #                 target[i, j] = self.tgt_dict.index("<MASK>")
+        # p = 0.5
+        # mask = torch.distributions.Bernoulli(torch.Tensor([p]))
+        # mask_tensor = None
+        #
+        # if samples[0].get('target', None) is not None:
+        #     mask_tensor = mask.sample(target.size())[:, :, 0]
+        #
+        #     target[(target != self.tgt_dict.pad()) & (
+        #         mask_tensor.byte())] = self.tgt_dict.index("<MASK>")
+        #     mask_tensor[(target == self.tgt_dict.pad())] = 0
 
         batch = {
             'id': id,
@@ -109,14 +105,14 @@ class MLELanguagePairDataset(LanguagePairDataset):
             'net_input': {
                 'src_tokens': src_tokens,
                 'src_lengths': src_lengths,
-                'masked_tgt': target,
+                # 'masked_tgt': target,
                 'tgt_lengths': tgt_lengths,
             },
             'target': ok_target,
-            'masks': mask_tensor
+            # 'masks': mask_tensor
         }
-        self.cnts += 1
 
         if prev_output_tokens is not None:
             batch['net_input']['prev_output_tokens'] = prev_output_tokens
         return batch
+    
