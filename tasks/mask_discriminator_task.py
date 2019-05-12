@@ -93,7 +93,7 @@ class MaskDiscriminatorTask(MaskMLETask):
         max_len = sample['target'].shape[1]
         tokens = [x[0]['tokens'] for x in generated]
         lengths = [min(max_len, x.shape[0]) for x in tokens]
-        generated_sents = torch.stack([torch.cat(
+        generated_tokens = torch.stack([torch.cat(
             (
                 sample['target'].new_full(
                     (max_len - length,),
@@ -103,7 +103,7 @@ class MaskDiscriminatorTask(MaskMLETask):
             )
         ) for x, length in zip(tokens, lengths)])
 
-        sample['generated_sents'] = generated_sents
+        sample['generated_tokens'] = generated_tokens
         # return
         # sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens']
         loss, sample_size, logging_output = criterion(model, sample)
@@ -123,13 +123,13 @@ class MaskDiscriminatorTask(MaskMLETask):
             max_len = sample['target'].shape[1]
             tokens = [x[0]['tokens'] for x in generated]
             lengths = [min(max_len, x.shape[0]) for x in tokens]
-            generated_sents = torch.stack([torch.cat(
+            generated_tokens = torch.stack([torch.cat(
                 (
                     sample['target'].new_full((max_len - length ,), self.target_dictionary.pad()),
                     x[:length]
                 )
             ) for x, length in zip(tokens, lengths)])
-            sample['generated_sents'] = generated_sents
+            sample['generated_tokens'] = generated_tokens
 
             loss, sample_size, logging_output = criterion(model, sample)
         return loss, sample_size, logging_output
