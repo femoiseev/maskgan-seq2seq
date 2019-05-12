@@ -122,3 +122,60 @@ class MaskMLETask(TranslationTask):
 
     def build_dataset_for_inference(self, src_tokens, src_lengths):
         return MLELanguagePairDataset(src_tokens, src_lengths, self.source_dictionary)
+
+    def process_sample(self, sample, p):
+        mask = torch.distributions.Bernoulli(torch.Tensor([p]))
+        target = sample['target'].clone()
+
+        mask_tensor = mask.sample(target.size())[:, :, 0].to("cuda")
+
+        pad_idx = self.target_dictionary.pad()
+        mask_idx = self.target_dictionary.index("<MASK>")
+
+        target[(target != pad_idx) & (
+            mask_tensor.byte())] = mask_idx
+        mask_tensor[(target == pad_idx)] = 0
+
+        sample['net_input']['masked_tgt'] = target
+        sample['masks'] = mask_tensor
+        return sample
+
+    def get_mask_rate(self):
+        return 0.5
+
+    def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
+        """
+        Do forward and backward, and return the loss as computed by *criterion*
+        for the given *model* and *sample*.
+        Args:
+            sample (dict): the mini-batch. The format is defined by the
+                :class:`~fairseq.data.FairseqDataset`.
+            model (~fairseq.models.BaseFairseqModel): the model
+            criterion (~fairseq.criterions.FairseqCriterion): the criterion
+            optimizer (~fairseq.optim.FairseqOptimizer): the optimizer
+            ignore_grad (bool): multiply loss by 0 if this is set to True
+        Returns:
+            tuple:
+                - the loss
+                - the sample size, which is used as the denominator for the
+                  gradient
+                - logging outputs to display while training
+        """
+        p = self.get_mask_rate()
+        sample = self.process_sample(sample, p=p)
+
+        return super().train_step(sample, model, criterion, optimizer, ignore_grad)
+
+    def valid_step(self, sample, model, criterion):
+        p = self.get_mask_rate()
+        sample = self.process_sample(sample, p=p)
+
+        return super().valid_step(sample, model, criterion)
+
+    def inference_step(self, generator, models, sample, prefix_tokens=None):
+        p = self.get_mask_rate()
+        sample = self.process_sample(sample, p=p)
+
+        return super().inference_step(generator, models, sample, prefix_tokens)
+
+

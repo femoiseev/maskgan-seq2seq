@@ -31,6 +31,27 @@ class MaskGANTask(MaskMLETask):
 
         parser.add_argument('--discriminator-steps', type=int, default=3)
 
+    def process_sample(self, sample, p):
+        mask = torch.distributions.Bernoulli(torch.Tensor([p]))
+        target = sample['target'].clone()
+
+        mask_tensor = mask.sample(target.size())[:, :, 0].to("cuda")
+
+        pad_idx = self.target_dictionary.pad()
+        mask_idx = self.target_dictionary.index("<MASK>")
+
+        target[(target != pad_idx) & (
+            mask_tensor.byte())] = mask_idx
+        mask_tensor[(target == pad_idx)] = 0
+
+        sample['net_input']['masked_tgt'] = target
+        sample['masks'] = mask_tensor
+        return sample
+
+    def get_mask_rate(self):
+        return 0.5
+        #  return torch.clamp(0.1 + self.passed_iters * 0.01, 0., 1.)
+
     def train_step(self, sample, model, criterion, optimizer,
                    ignore_grad=False):
         """
@@ -52,6 +73,9 @@ class MaskGANTask(MaskMLETask):
                   gradient
                 - logging outputs to display while training
         """
+        p = self.get_mask_rate()
+        sample = self.process_sample(sample, p=p)
+
         if self.discriminator_optimizer is None:
             params = list(filter(lambda p: p.requires_grad,
                                  criterion.discriminator.parameters()))
@@ -103,6 +127,8 @@ class MaskGANTask(MaskMLETask):
         logging_output = {}
         for i in range(self.discriminator_steps):
             sample = None
+            p = self.get_mask_rate()
+            sample = self.process_sample(sample, p=p)
 
             generated = self.sequence_generator.generate((self.generator,),
                                                          sample)
@@ -136,12 +162,17 @@ class MaskGANTask(MaskMLETask):
         return loss, sample_size, logging_output
 
     def valid_step(self, sample, model, criterion):
+        p = self.get_mask_rate()
+        sample = self.process_sample(sample, p=p)
+
         model.eval()
         with torch.no_grad():
             loss, sample_size, logging_output = criterion(model, sample)
         return loss, sample_size, logging_output
 
     def inference_step(self, generator, models, sample, prefix_tokens=None):
+        sample = self.process_sample(sample, p=1.0)
+
         with torch.no_grad():
             return generator.generate(models, sample,
                                       prefix_tokens=prefix_tokens)

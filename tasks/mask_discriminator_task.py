@@ -15,8 +15,8 @@ class MaskDiscriminatorTask(MaskMLETask):
         if not args[0].cpu:
             self.generator.cuda()
 
-        self.__passed_iters = 0
-        self.sequence_generator = SequenceGenerator(self.target_dictionary, beam_size=5)
+        self.passed_iters = 0
+        self.sequence_generator = SequenceGenerator(self.target_dictionary, beam_size=1)
 
     @staticmethod
     def add_args(parser):
@@ -43,7 +43,6 @@ class MaskDiscriminatorTask(MaskMLETask):
         return model
 
     def process_sample(self, sample, p):
-        p = 0.5
         mask = torch.distributions.Bernoulli(torch.Tensor([p]))
         target = sample['target'].clone()
 
@@ -60,8 +59,9 @@ class MaskDiscriminatorTask(MaskMLETask):
         sample['masks'] = mask_tensor
         return sample
 
-    def __get_mask_rate__(self):
-        return torch.clamp(0 + self.__passed_iters * 0.0001, 0., 1.)
+    def get_mask_rate(self):
+        return 0.5
+        #  return torch.clamp(0.1 + self.passed_iters * 0.01, 0., 1.)
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
         """
@@ -82,7 +82,7 @@ class MaskDiscriminatorTask(MaskMLETask):
                 - logging outputs to display while training
         """
 
-        p = self.__get_mask_rate__()
+        p = self.get_mask_rate()
         sample = self.process_sample(sample, p=p)
 
         self.generator.eval()
@@ -110,11 +110,11 @@ class MaskDiscriminatorTask(MaskMLETask):
         if ignore_grad:
             loss *= 0
         optimizer.backward(loss)
-        self.__passed_iters += 1
+        self.passed_iters += 1
         return loss, sample_size, logging_output
 
     def valid_step(self, sample, model, criterion):
-        p = self.__get_mask_rate__()
+        p = self.get_mask_rate()
         sample = self.process_sample(sample, p=p)
         self.generator.eval()
         model.eval()
@@ -133,5 +133,11 @@ class MaskDiscriminatorTask(MaskMLETask):
 
             loss, sample_size, logging_output = criterion(model, sample)
         return loss, sample_size, logging_output
+
+    def inference_step(self, generator, models, sample, prefix_tokens=None):
+        p = self.get_mask_rate()
+        sample = self.process_sample(sample, p=p)
+        with torch.no_grad():
+            return generator.generate(models, sample, prefix_tokens=prefix_tokens)
 
 
