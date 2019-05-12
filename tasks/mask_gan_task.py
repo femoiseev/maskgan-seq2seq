@@ -24,6 +24,7 @@ class MaskGANTask(MaskMLETask):
         self.discriminator_optimizer = None
         self.discriminator_loss = DiscriminatorCriterion(args, self)
         self.discriminator_steps = args[0].discriminator_steps
+        self.args = args[0]
 
     @staticmethod
     def add_args(parser):
@@ -123,10 +124,35 @@ class MaskGANTask(MaskMLETask):
 
         return loss, sample_size, logging_output
 
+    def get_discriminator_batch_iterator(self, discriminator):
+        max_positions = utils.resolve_max_positions(
+            self.max_positions(),
+            discriminator.max_positions(),
+        )
+        epoch_itr = self.get_batch_iterator(
+            dataset=self.dataset(self.args.train_subset),
+            max_tokens=self.args.max_tokens,
+            max_sentences=self.args.max_sentences,
+            max_positions=max_positions,
+            ignore_invalid_inputs=True,
+            required_batch_size_multiple=self.args.required_batch_size_multiple,
+            seed=self.args.seed,
+            num_shards=self.args.distributed_world_size,
+            shard_id=self.args.distributed_rank,
+            num_workers=self.args.num_workers,
+        )
+        itr = epoch_itr.next_epoch_itr(
+            fix_batches_to_gpus=self.args.fix_batches_to_gpus,
+            shuffle=True
+        )
+        for i, sample in enumerate(itr):
+            if i >= self.discriminator_steps:
+                return
+            yield sample
+
     def train_discriminator(self, discriminator, ignore_grad=False):
         logging_output = {}
-        for i in range(self.discriminator_steps):
-            sample = None
+        for sample in self.get_discriminator_batch_iterator(discriminator):
             p = self.get_mask_rate()
             sample = self.process_sample(sample, p=p)
 
