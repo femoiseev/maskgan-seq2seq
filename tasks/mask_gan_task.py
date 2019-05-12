@@ -1,7 +1,7 @@
 from .mask_mle_task import MaskMLETask
 from fairseq.tasks import register_task
 from fairseq import utils
-from fairseq.optim import FP16Optimizer
+from fairseq import optim
 import torch
 
 from fairseq.criterions import FairseqCriterion, register_criterion
@@ -18,44 +18,59 @@ class MaskGANTask(MaskMLETask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.discriminator = self.load_pretrained_discriminator(args[0].discriminator_path)
-        if not args[0].cpu:
-            self.discriminator.cuda()
-
         self.sequence_generator = SequenceGenerator(self.target_dictionary,
-                                                    beam_size=5)
+                                                    beam_size=1)
 
-        params = list(filter(lambda p: p.requires_grad,
-                             self.discriminator.parameters()))
-        self.opt_discr = torch.optim.Adam(params,)
-        self.discriminator_loss = DiscriminatorCriterion(args, MaskMLETask)
+        self.discriminator_optimizer = None
+        self.discriminator_loss = DiscriminatorCriterion(args, self)
+        self.discriminator_steps = args[0].discriminator_steps
 
-    # @staticmethod
-    # def add_args(parser):
-    #     MaskMLETask.add_args(parser)
-    #
-    #     parser.add_argument('--discriminator-path', type=str, help='path to discriminator')
+    @staticmethod
+    def add_args(parser):
+        super(MaskGANTask, MaskGANTask).add_args(parser)
 
-    def load_pretrained_discriminator(self, path, arg_overrides=None):
-        model = utils.load_checkpoint_to_cpu(path)
-        args = model['args']
-        state_dict = model['model']
-        if not(arg_overrides is None):
-            args = utils.override_model_args(args, arg_overrides)
-        src_dict = self.source_dictionary
-        tgt_dict = self.target_dictionary
-        assert src_dict.pad() == tgt_dict.pad()
-        assert src_dict.eos() == tgt_dict.eos()
-        assert src_dict.unk() == tgt_dict.unk()
-
-        task = MaskDiscriminatorTask(args, src_dict, tgt_dict)
-        model = task.build_model(args)
-        model.upgrade_state_dict(state_dict)
-        model.load_state_dict(state_dict, strict=True)
-        return model
+        parser.add_argument('--discriminator-steps', type=int, default=3)
 
     def train_step(self, sample, model, criterion, optimizer,
                    ignore_grad=False):
+        """
+        Do forward and backward, and return the loss as computed by *criterion*
+        for the given *model* and *sample*.
+
+        Args:
+            sample (dict): the mini-batch. The format is defined by the
+                :class:`~fairseq.data.FairseqDataset`.
+            model (~fairseq.models.BaseFairseqModel): the model
+            criterion (~fairseq.criterions.FairseqCriterion): the criterion
+            optimizer (~fairseq.optim.FairseqOptimizer): the optimizer
+            ignore_grad (bool): multiply loss by 0 if this is set to True
+
+        Returns:
+            tuple:
+                - the loss
+                - the sample size, which is used as the denominator for the
+                  gradient
+                - logging outputs to display while training
+        """
+        if self.discriminator_optimizer is None:
+            params = list(filter(lambda p: p.requires_grad,
+                                 criterion.discriminator.parameters()))
+            self.discriminator_optimizer = optim.build_optimizer(self.args, params)
+
+        discriminator_logging_output = self.train_discriminator(criterion.discriminator, ignore_grad)
+        loss, sample_size, generator_logging_output = self.generator_train_step(sample, model, criterion, optimizer)
+
+        logging_output = self.merge_logging_outputs(generator_logging_output, discriminator_logging_output)
+
+        return loss, sample_size, logging_output
+
+    @staticmethod
+    def merge_logging_outputs(generator_logging_outputs, discriminator_logging_outputs):
+        generator_logging_outputs['discriminator_loss'] = discriminator_logging_outputs['loss']
+
+        return generator_logging_outputs
+
+    def generator_train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
         """
         Do forward and backward, and return the loss as computed by *criterion*
         for the given *model* and *sample*.
@@ -82,37 +97,42 @@ class MaskGANTask(MaskMLETask):
             loss *= 0
         optimizer.backward(loss)
 
-        discr_step = 3
-        for i in range(discr_step):
+        return loss, sample_size, logging_output
 
-            sample_for_discriminator = deepcopy(sample)
+    def train_discriminator(self, discriminator, ignore_grad=False):
+        logging_output = {}
+        for i in range(self.discriminator_steps):
+            sample = None
 
             generated = self.sequence_generator.generate((self.generator,),
-                                                         sample_for_discriminator)
+                                                         sample)
 
-            max_len = sample_for_discriminator['target'].shape[1]
+            max_len = sample['target'].shape[1]
             tokens = [x[0]['tokens'] for x in generated]
             lengths = [min(max_len, x.shape[0]) for x in tokens]
-            generated_sents = torch.stack([torch.cat(
+            generated_tokens = torch.stack(tuple([torch.cat(
                 (
-                    sample_for_discriminator['target'].new_full(
+                    sample['target'].new_full(
                         (max_len - length,),
                         self.target_dictionary.pad()
                     ),
                     x[:length],
                 )
-            ) for x, length in zip(tokens, lengths)])
+            ) for x, length in zip(tokens, lengths)]))
 
-            sample_for_discriminator['generated_sents'] = generated_sents
-            _ = self.train_discr(sample_for_discriminator, ignore_grad=ignore_grad)
+            sample['generated_tokens'] = generated_tokens
+            _, _, logging_output = self.discriminator_train_step(discriminator, sample, ignore_grad=ignore_grad)
+            self.discriminator_optimizer.step()
+            self.discriminator_optimizer.zero_grad()
 
-        return loss, sample_size, logging_output
+        return logging_output
 
-    def train_discr(self, sample, ignore_grad=False):
-        loss, sample_size, logging_output = self.discriminator_loss(self.discriminator, sample)
+    def discriminator_train_step(self, discriminator, sample, ignore_grad=False):
+        self.discriminator.train()
+        loss, sample_size, logging_output = self.discriminator_loss(discriminator, sample)
         if ignore_grad:
             loss *= 0
-        self.opt_discr.backward(loss)
+        self.discriminator_optimizer.backward(loss)
         return loss, sample_size, logging_output
 
     def valid_step(self, sample, model, criterion):
