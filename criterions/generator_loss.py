@@ -47,8 +47,9 @@ class MaskGeneratorCriterion(FairseqCriterion):
 
         task = MaskDiscriminatorTask(args, src_dict, tgt_dict)
         model = task.build_model(args)
-        # model.upgrade_state_dict(state_dict)
-        # model.load_state_dict(state_dict, strict=True)
+        model.upgrade_state_dict(state_dict)
+        model.load_state_dict(state_dict, strict=True)
+
         return model
 
     def forward(self, model, sample, reduce=True):
