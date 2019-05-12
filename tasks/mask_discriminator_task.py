@@ -104,8 +104,6 @@ class MaskDiscriminatorTask(MaskMLETask):
         ) for x, length in zip(tokens, lengths)])
 
         sample['generated_tokens'] = generated_tokens
-        # return
-        # sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens']
         loss, sample_size, logging_output = criterion(model, sample)
         if ignore_grad:
             loss *= 0

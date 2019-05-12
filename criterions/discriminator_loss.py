@@ -21,7 +21,9 @@ class DiscriminatorCriterion(FairseqCriterion):
         2) the sample size, which is used as the denominator for the gradient
         3) logging outputs to display while training
         """
-        real_output = model(**sample['net_input'])[0]
+        real_input = sample['net_input']
+        real_input['prev_output_tokens'] = sample['target']
+        real_output = model(**real_input)[0]
         fake_input = deepcopy(sample['net_input'])
         fake_input['prev_output_tokens'] = sample['generated_tokens']
         fake_output = model(**fake_input)[0]
