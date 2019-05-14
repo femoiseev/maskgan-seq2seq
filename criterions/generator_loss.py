@@ -52,7 +52,7 @@ class MaskGeneratorCriterion(FairseqCriterion):
 
         return model
 
-    def forward(self, model, sample, reduce=True):
+    def forward(self, model, sample, reduce=True, ignore_mask=False):
         """Compute the loss for the given sample.
         Returns a tuple with three elements:
         1) the loss
@@ -92,7 +92,7 @@ class MaskGeneratorCriterion(FairseqCriterion):
         # ) for x, length in zip(tokens, lengths)]))
         # sample['generated_beam'] = generated_tokens
 
-        loss, mean_prob = self.compute_loss(model, logits, sample, reduce=reduce)
+        loss, mean_prob = self.compute_loss(model, logits, sample, reduce=reduce, ignore_mask=ignore_mask)
         sample_size = sample['target'].size(0) if self.args.sentence_avg else sample['ntokens']
         logging_output = {
             'generator_loss': utils.item(loss.data) if reduce else loss.data,
@@ -103,7 +103,7 @@ class MaskGeneratorCriterion(FairseqCriterion):
         }
         return loss, sample_size, logging_output
 
-    def compute_loss(self, model, logits, sample, reduce=True):
+    def compute_loss(self, model, logits, sample, reduce=True, ignore_mask=False):
         new_mask = sample['masks']
 
         fake_input = deepcopy(sample['net_input'])
@@ -117,8 +117,12 @@ class MaskGeneratorCriterion(FairseqCriterion):
         # rewards_beam = F.logsigmoid(discriminator_logits)[:, :, 0].detach() - math.log(0.5)
 
         rewards = rewards_greedy  # - rewards_beam
-        mask_rewards = rewards * new_mask
-        cumulative_rewards = torch.flip(torch.cumsum(torch.flip(mask_rewards, (-1,)), dim=-1), (-1,))
+        if ignore_mask:
+            cumulative_rewards = torch.flip(
+                torch.cumsum(torch.flip(rewards, (-1,)), dim=-1), (-1,))
+        else:
+            mask_rewards = rewards * new_mask
+            cumulative_rewards = torch.flip(torch.cumsum(torch.flip(mask_rewards, (-1,)), dim=-1), (-1,))
 
         generated_tokens = sample['generated_greedy']
         logprobs = F.log_softmax(logits, dim=-1)
@@ -128,10 +132,16 @@ class MaskGeneratorCriterion(FairseqCriterion):
         chosen_logprobs = logprobs.reshape(num_tokens, dict_size)[torch.arange(num_tokens),
                                                                   generated_tokens.reshape(-1,)].reshape(generated_shape)
         J = chosen_logprobs * cumulative_rewards
-        J *= new_mask
-        loss = -torch.sum(J) / torch.sum(new_mask)
-        probs = torch.exp(rewards_greedy + math.log(0.5)) * new_mask
-        mean_prob = torch.sum(probs) / torch.sum(new_mask)
+
+        if ignore_mask:
+            loss = -torch.mean(J)
+            probs = torch.exp(rewards_greedy + math.log(0.5))
+            mean_prob = torch.mean(probs)
+        else:
+            J *= new_mask
+            loss = -torch.sum(J) / torch.sum(new_mask)
+            probs = torch.exp(rewards_greedy + math.log(0.5)) * new_mask
+            mean_prob = torch.sum(probs) / torch.sum(new_mask)
 
         return loss, mean_prob
 

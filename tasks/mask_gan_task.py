@@ -24,6 +24,7 @@ class MaskGANTask(MaskMLETask):
         self.discriminator_optimizer = None
         self.discriminator_loss = DiscriminatorCriterion(args[0], self)
         self.discriminator_steps = args[0].discriminator_steps
+        self.ignore_mask = args[0].ignore_mask
         self.args = args[0]
 
     @staticmethod
@@ -31,6 +32,7 @@ class MaskGANTask(MaskMLETask):
         super(MaskGANTask, MaskGANTask).add_args(parser)
 
         parser.add_argument('--discriminator-steps', type=int, default=3)
+        parser.add_argument('--ignore-mask', type=bool, default=False)
 
     def process_sample(self, sample, p):
         mask = torch.distributions.Bernoulli(torch.Tensor([p]))
@@ -50,7 +52,7 @@ class MaskGANTask(MaskMLETask):
         return sample
 
     def get_mask_rate(self):
-        return 0.5
+        return 0.8
         #  return torch.clamp(0.1 + self.passed_iters * 0.01, 0., 1.)
 
     def train_step(self, sample, model, criterion, optimizer,
@@ -117,7 +119,8 @@ class MaskGANTask(MaskMLETask):
         """
 
         model.train()
-        loss, sample_size, logging_output = criterion(model, sample)
+        loss, sample_size, logging_output = criterion(model, sample,
+                                                      ignore_mask=self.ignore_mask)
         if ignore_grad:
             loss *= 0
         optimizer.backward(loss)
