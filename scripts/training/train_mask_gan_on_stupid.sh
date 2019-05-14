@@ -8,6 +8,9 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --min-lr '1e-06' --lr-scheduler inverse_sqrt --weight-decay 0.0001 \
   --reset-optimizer \
   --warmup-updates 2500 \
+  --discriminator-steps 3 \
+  --ignore-mask True \
+  --update-discr-every 5 \
   --criterion generator_loss --max-epoch 200 \
   --adam-betas '(0.9, 0.98)' --save-dir ../../checkpoints/mask_gan_vocalization_on_stupid \
   --discriminator-path ../../checkpoints/discriminator_vocalization_on_stupid/checkpoint_best.pt --keep-last-epochs 100

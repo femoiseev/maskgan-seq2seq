@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-!mkdir -p ../../checkpoints/discriminator_vocalization
+mkdir -p ../../checkpoints/discriminator_vocalization
 CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --user-dir ../../models --task mask_discriminator --raw-text \
   -a mask_discriminator_vocalization --optimizer adam --lr 0.0005 -s he -t voc \
