@@ -25,6 +25,8 @@ class MaskGANTask(MaskMLETask):
         self.discriminator_loss = DiscriminatorCriterion(args[0], self)
         self.discriminator_steps = args[0].discriminator_steps
         self.ignore_mask = args[0].ignore_mask
+        self.update_discr_every = args[0].update_discr_every
+        self._step_counter = 0
         self.args = args[0]
 
     @staticmethod
@@ -33,12 +35,13 @@ class MaskGANTask(MaskMLETask):
 
         parser.add_argument('--discriminator-steps', type=int, default=3)
         parser.add_argument('--ignore-mask', type=bool, default=False)
+        parser.add_argument('--update-discr-every', type=int, default=1)
 
     def process_sample(self, sample, p):
         mask = torch.distributions.Bernoulli(torch.Tensor([p]))
         target = sample['target'].clone()
 
-        mask_tensor = mask.sample(target.size())[:, :, 0].cuda()
+        mask_tensor = mask.sample(target.size())[:, :, 0].to(target.device)
 
         pad_idx = self.target_dictionary.pad()
         mask_idx = self.target_dictionary.index("<MASK>")
@@ -84,11 +87,15 @@ class MaskGANTask(MaskMLETask):
                                  criterion.discriminator.parameters()))
             self.discriminator_optimizer = optim.build_optimizer(self.args, params)
 
-        discriminator_logging_output = self.train_discriminator(model, criterion.discriminator, ignore_grad)
+        if self._step_counter % self.update_discr_every == 0:
+            discriminator_logging_output = self.train_discriminator(model, criterion.discriminator, ignore_grad)
+        else:
+            discriminator_logging_output = {"loss": -1.}
+
         loss, sample_size, generator_logging_output = self.generator_train_step(sample, model, criterion, optimizer)
 
         logging_output = self.merge_logging_outputs(generator_logging_output, discriminator_logging_output)
-
+        self._step_counter += 1
         return loss, sample_size, logging_output
 
     @staticmethod
@@ -161,7 +168,7 @@ class MaskGANTask(MaskMLETask):
             sample = self.process_sample(sample, p=p)
 
             generated = self.sequence_generator.generate((generator,),
-                                                         sample)
+                                                         sample, substitute=True, mask_token=self.target_dictionary.index('<MASK>'))
 
             max_len = sample['target'].shape[1]
             tokens = [x[0]['tokens'] for x in generated]

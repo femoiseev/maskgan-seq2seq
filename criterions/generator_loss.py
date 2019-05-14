@@ -62,7 +62,8 @@ class MaskGeneratorCriterion(FairseqCriterion):
 
         logits = model(**sample['net_input'])[0]
 
-        generated = self.greedy_generator.generate((model,), sample)
+        generated = self.greedy_generator.generate((model,), sample,
+                                                   substitute=True, mask_token=self.target_dictionary.index('<MASK>'))
         max_len = sample['target'].shape[1]
         tokens = [x[0]['tokens'] for x in generated]
         lengths = [min(max_len, x.shape[0]) for x in tokens]

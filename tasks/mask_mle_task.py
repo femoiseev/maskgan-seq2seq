@@ -141,7 +141,7 @@ class MaskMLETask(TranslationTask):
         return sample
 
     def get_mask_rate(self):
-        return 0.5
+        return 0.8
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
         """

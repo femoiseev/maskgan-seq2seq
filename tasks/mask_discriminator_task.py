@@ -46,7 +46,7 @@ class MaskDiscriminatorTask(MaskMLETask):
         mask = torch.distributions.Bernoulli(torch.Tensor([p]))
         target = sample['target'].clone()
 
-        mask_tensor = mask.sample(target.size())[:, :, 0].to("cuda")
+        mask_tensor = mask.sample(target.size())[:, :, 0].to(target.device)
 
         pad_idx = self.target_dictionary.pad()
         mask_idx = self.target_dictionary.index("<MASK>")
@@ -60,7 +60,7 @@ class MaskDiscriminatorTask(MaskMLETask):
         return sample
 
     def get_mask_rate(self):
-        return 0.5
+        return 0.8
         #  return torch.clamp(0.1 + self.passed_iters * 0.01, 0., 1.)
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
@@ -88,7 +88,8 @@ class MaskDiscriminatorTask(MaskMLETask):
         self.generator.eval()
         model.train()
 
-        generated = self.sequence_generator.generate((self.generator, ), sample)
+        generated = self.sequence_generator.generate((self.generator, ), sample,
+                                                     substitute=True, mask_token=self.target_dictionary.index('<MASK>'))
 
         max_len = sample['target'].shape[1]
         tokens = [x[0]['tokens'] for x in generated]
@@ -104,6 +105,10 @@ class MaskDiscriminatorTask(MaskMLETask):
         ) for x, length in zip(tokens, lengths)])
 
         sample['generated_tokens'] = generated_tokens
+
+        # print('Target', sample['target'][0])
+        # print('Generated', generated_tokens[0])
+
         loss, sample_size, logging_output = criterion(model, sample)
         if ignore_grad:
             loss *= 0
@@ -117,7 +122,10 @@ class MaskDiscriminatorTask(MaskMLETask):
         self.generator.eval()
         model.eval()
         with torch.no_grad():
-            generated = self.sequence_generator.generate((self.generator,), sample)
+            generated = self.sequence_generator.generate((self.generator,), sample,
+                                                         substitute=True,
+                                                         mask_token=self.target_dictionary.index(
+                                                             '<MASK>'))
             max_len = sample['target'].shape[1]
             tokens = [x[0]['tokens'] for x in generated]
             lengths = [min(max_len, x.shape[0]) for x in tokens]
@@ -136,6 +144,9 @@ class MaskDiscriminatorTask(MaskMLETask):
         p = self.get_mask_rate()
         sample = self.process_sample(sample, p=p)
         with torch.no_grad():
-            return generator.generate(models, sample, prefix_tokens=prefix_tokens)
+            return generator.generate(models, sample, prefix_tokens=prefix_tokens,
+                                      substitute=True,
+                                      mask_token=self.target_dictionary.index(
+                                          '<MASK>'))
 
 
