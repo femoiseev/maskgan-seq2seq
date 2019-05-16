@@ -16,12 +16,14 @@ class MaskDiscriminatorTask(MaskMLETask):
             self.generator.cuda()
 
         self.passed_iters = 0
-        self.sequence_generator = SequenceGenerator(self.target_dictionary, beam_size=1)
+        self.sequence_generator = SequenceGenerator(self.target_dictionary, beam_size=1, sampling=True)
+        self.ignore_mask = args[0].ignore_mask
 
     @staticmethod
     def add_args(parser):
         MaskMLETask.add_args(parser)
 
+        parser.add_argument('--ignore-mask', type=bool, default=False)
         parser.add_argument('--generator-path', type=str, help='path to trained generator')
 
     def load_pretrained_generator(self, path, arg_overrides=None):
@@ -60,7 +62,8 @@ class MaskDiscriminatorTask(MaskMLETask):
         return sample
 
     def get_mask_rate(self):
-        return 0.8
+        return 1.0
+        # return 0.2
         #  return torch.clamp(0.1 + self.passed_iters * 0.01, 0., 1.)
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
@@ -109,7 +112,7 @@ class MaskDiscriminatorTask(MaskMLETask):
         # print('Target', sample['target'][0])
         # print('Generated', generated_tokens[0])
 
-        loss, sample_size, logging_output = criterion(model, sample)
+        loss, sample_size, logging_output = criterion(model, sample, ignore_mask=self.ignore_mask)
         if ignore_grad:
             loss *= 0
         optimizer.backward(loss)

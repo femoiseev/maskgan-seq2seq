@@ -119,11 +119,10 @@ class MaskGeneratorCriterion(FairseqCriterion):
 
         rewards = rewards_greedy  # - rewards_beam
         if ignore_mask:
-            cumulative_rewards = torch.flip(
-                torch.cumsum(torch.flip(rewards, (-1,)), dim=-1), (-1,))
-        else:
-            mask_rewards = rewards * new_mask
-            cumulative_rewards = torch.flip(torch.cumsum(torch.flip(mask_rewards, (-1,)), dim=-1), (-1,))
+            new_mask = (sample['net_input']['masked_tgt'] != self.padding_idx).float()
+        mask_rewards = rewards * new_mask
+        cumulative_rewards = torch.flip(torch.cumsum(torch.flip(mask_rewards, (-1,)), dim=-1), (-1,))
+        # cumulative_rewards = mask_rewards
 
         generated_tokens = sample['generated_greedy']
         logprobs = F.log_softmax(logits, dim=-1)

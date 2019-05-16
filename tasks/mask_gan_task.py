@@ -19,7 +19,7 @@ class MaskGANTask(MaskMLETask):
         super().__init__(*args, **kwargs)
 
         self.sequence_generator = SequenceGenerator(self.target_dictionary,
-                                                    beam_size=1)
+                                                    beam_size=1, sampling=True)
 
         self.discriminator_optimizer = None
         self.discriminator_loss = DiscriminatorCriterion(args[0], self)
@@ -55,8 +55,8 @@ class MaskGANTask(MaskMLETask):
         return sample
 
     def get_mask_rate(self):
-        return 0.8
-        #  return torch.clamp(0.1 + self.passed_iters * 0.01, 0., 1.)
+        return 1.0
+        # return min(1.0, (self._step_counter / 18) / 30 + 0.2)
 
     def train_step(self, sample, model, criterion, optimizer,
                    ignore_grad=False):
@@ -192,7 +192,7 @@ class MaskGANTask(MaskMLETask):
 
     def discriminator_train_step(self, discriminator, sample, ignore_grad=False):
         discriminator.train()
-        loss, sample_size, logging_output = self.discriminator_loss(discriminator, sample)
+        loss, sample_size, logging_output = self.discriminator_loss(discriminator, sample, ignore_mask=self.ignore_mask)
         if ignore_grad:
             loss *= 0
         self.discriminator_optimizer.backward(loss)
@@ -212,5 +212,5 @@ class MaskGANTask(MaskMLETask):
         sample = self.process_sample(sample, p=p) # pass 1 for real inference
 
         with torch.no_grad():
-            return generator.generate(models, sample,
-                                      prefix_tokens=prefix_tokens)
+            return generator.generate(models, sample, prefix_tokens=prefix_tokens, substitute=True, mask_token=self.target_dictionary.index('<MASK>'))
+            # return generator.generate(models, sample, prefix_tokens=prefix_tokens)

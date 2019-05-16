@@ -18,6 +18,7 @@ class MaskMLETask(TranslationTask):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._step_counter = 0
 
     @classmethod
     def setup_task(cls, args, **kwargs):
@@ -141,7 +142,12 @@ class MaskMLETask(TranslationTask):
         return sample
 
     def get_mask_rate(self):
-        return 0.8
+        # return 0.2
+        # if self._step_counter < 18 * 20:
+        #    return 1.0
+        # else:
+        #    return max(0.2, 1.0 - 0.8 * (self._step_counter - 18 * 20) / 18 / 5)
+        return 1.0
 
     def train_step(self, sample, model, criterion, optimizer, ignore_grad=False):
         """
@@ -163,6 +169,7 @@ class MaskMLETask(TranslationTask):
         """
         p = self.get_mask_rate()
         sample = self.process_sample(sample, p=p)
+        self._step_counter += 1
 
         return super().train_step(sample, model, criterion, optimizer, ignore_grad)
 
@@ -175,7 +182,10 @@ class MaskMLETask(TranslationTask):
     def inference_step(self, generator, models, sample, prefix_tokens=None):
         p = self.get_mask_rate()
         sample = self.process_sample(sample, p=p)
+        # sample = self.process_sample(sample, p=0.2)
 
-        return super().inference_step(generator, models, sample, prefix_tokens)
+        with torch.no_grad():
+            # return generator.generate(models, sample, prefix_tokens=prefix_tokens, substitute=True, mask_token=self.target_dictionary.index('<MASK>'))
+            return generator.generate(models, sample, prefix_tokens=prefix_tokens)
 
 

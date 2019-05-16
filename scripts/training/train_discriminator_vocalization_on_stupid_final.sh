@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-mkdir -p ../../checkpoints/discriminator_vocalization_on_stupid
+mkdir -p ../../checkpoints/discriminator_vocalization_on_stupid_final
 CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --user-dir ../../models --task mask_discriminator --raw-text \
   -a mask_discriminator_vocalization --optimizer adam --lr 0.0003 -s he -t voc \
@@ -7,6 +7,5 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --min-lr '1e-06' --lr-scheduler inverse_sqrt --weight-decay 0.0001 \
   --warmup-updates 2500 \
   --criterion discriminator_loss --max-epoch 200 \
-  --ignore-mask False \
-  --adam-betas '(0.9, 0.98)' --save-dir ../../checkpoints/discriminator_vocalization_on_stupid \
-  --generator-path ../../checkpoints/mle_transformer_vocalization_stupid/checkpoint10.pt --keep-last-epochs 200
+  --adam-betas '(0.9, 0.98)' --save-dir ../../checkpoints/discriminator_vocalization_on_stupid_final \
+  --generator-path ../../checkpoints/mle_transformer_vocalization_stupid_final/checkpoint25.pt --keep-last-epochs 200

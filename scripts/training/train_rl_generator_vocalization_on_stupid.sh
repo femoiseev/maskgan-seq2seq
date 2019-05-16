@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 mkdir -p ../../checkpoints/rl_generator_vocalization_on_stupid
-cp ../../checkpoints/mle_transformer_vocalization_stupid/checkpoint_last.pt ../../checkpoints/rl_generator_vocalization_on_stupid
+cp ../../checkpoints/mle_transformer_vocalization_stupid/checkpoint15.pt ../../checkpoints/rl_generator_vocalization_on_stupid/checkpoint_last.pt
 CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --user-dir ../../models --task mask_mle --raw-text \
   -a mask_transformer_vocalization --optimizer adam --lr 0.0003 -s he -t voc \

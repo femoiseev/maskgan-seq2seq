@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-mkdir -p ../../checkpoints/mle_transformer_vocalization_stupid
+mkdir -p ../../checkpoints/mle_transformer_vocalization_stupid2
+cp ../../checkpoints/mle_transformer_vocalization_stupid1/checkpoint_last.pt ../../checkpoints/mle_transformer_vocalization_stupid2/checkpoint_last.pt
 CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --user-dir ../../models --task mask_mle --raw-text \
   -a mask_transformer_vocalization --optimizer adam --lr 0.001 -s he -t voc \
@@ -7,5 +8,5 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train ../../data/processed/vocalization \
   --min-lr '1e-06' --lr-scheduler inverse_sqrt --weight-decay 0.0001 \
   --warmup-updates 2500 \
   --criterion label_smoothed_cross_entropy \
-  --adam-betas '(0.9, 0.98)' --save-dir ../../checkpoints/mle_transformer_vocalization_stupid \
-  --keep-last-epochs 100 --max-epoch 100
+  --adam-betas '(0.9, 0.98)' --save-dir ../../checkpoints/mle_transformer_vocalization_stupid2 \
+  --keep-last-epochs 100 --max-epoch 110

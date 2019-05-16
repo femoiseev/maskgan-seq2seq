@@ -14,7 +14,7 @@ class DiscriminatorCriterion(FairseqCriterion):
     def __init__(self, args, task):
         super().__init__(args, task)
 
-    def forward(self, model, sample, reduce=True):
+    def forward(self, model, sample, reduce=True, ignore_mask=False):
         """Compute the loss for the given sample.
         Returns a tuple with three elements:
         1) the loss
@@ -28,7 +28,7 @@ class DiscriminatorCriterion(FairseqCriterion):
         fake_input['prev_output_tokens'] = sample['generated_tokens']
         fake_output = model(**fake_input)[0]
 
-        loss, _ = self.compute_loss(model, real_output, fake_output, sample, reduce=reduce)
+        loss, _ = self.compute_loss(model, real_output, fake_output, sample, reduce=reduce, ignore_mask=ignore_mask)
         sample_size = sample['target'].size(0) if self.args.sentence_avg else sample['ntokens']
         logging_output = {
             'loss': utils.item(loss.data) if reduce else loss.data,
@@ -38,8 +38,12 @@ class DiscriminatorCriterion(FairseqCriterion):
         }
         return loss, sample_size, logging_output
 
-    def compute_loss(self, model, real_output, fake_output, sample, reduce=True):
+    def compute_loss(self, model, real_output, fake_output, sample, reduce=True, ignore_mask=False):
         new_mask = sample['masks']
+
+        if ignore_mask:
+            new_mask = (sample['net_input']['masked_tgt'] != self.padding_idx).float()
+
         real_output = real_output.squeeze()
         fake_output = fake_output.squeeze()
 
